@@ -7,6 +7,31 @@ namespace ILibrary.Maths.Geometry2D
 {
     public static class Geometry2D
     {
+        private enum DirectionSector { A, B, C, D, E }
+
+        private static DirectionSector DefineSector(Circle circle, Vector2 direction, Circle relation)
+        {
+            ExternalTangencyBetweenTwoCirces(circle, relation, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
+            InternalTangencyBetweenTwoCirces(circle, relation, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
+
+            externalPoint1 = externalPoint1 - circle.Position;
+            externalPoint2 = externalPoint2 - circle.Position;
+            internalPoint1 = internalPoint1 - circle.Position;
+            internalPoint2 = internalPoint2 - circle.Position;
+
+            if (DirectionBetweenTwoDirections(direction, externalPoint1, internalPoint1))
+                return DirectionSector.A;
+            else if (DirectionBetweenTwoDirections(direction, externalPoint2, internalPoint2))
+                return DirectionSector.B;
+            else if (DirectionBetweenTwoDirections(direction, internalPoint1, internalPoint2))
+                return DirectionSector.C;
+            else if (DirectionBetweenTwoDirections(direction, externalPoint1, circle.Position - relation.Position))
+                return DirectionSector.D;
+            else if (DirectionBetweenTwoDirections(direction, externalPoint2, circle.Position - relation.Position))
+                return DirectionSector.E;
+            throw new Exception();
+        }
+
         public static void CircleDirection2CircleDirection(Circle circle1, Vector2 circle1Direction, Circle circle2, Vector2 circle2Direction, out Vector2 circle1EndDirection, out Vector2 circle2EndDirection)
         {
             circle1Direction = circle1Direction.normalized * circle1.Radius;
@@ -33,178 +58,155 @@ namespace ILibrary.Maths.Geometry2D
             switch (direction1)
             {
                 case DirectionSector.A:
+                {
+                    switch (direction2)
                     {
-                        switch (direction2)
+                        case DirectionSector.A:
                         {
-                            case DirectionSector.A:
-                                {
-                                    circle1EndDirection = internalPoint1;
-                                    circle2EndDirection = internalPoint3;
-                                }
-                                break;
-                            case DirectionSector.B:
-                                {
-                                    Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                                }
-                                break;
-                            case DirectionSector.C:
-                                {
-                                    Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                                }
-                                break;
-                            case DirectionSector.D:
-                                {
-                                    circle1EndDirection = internalPoint1;
-                                    circle2EndDirection = internalPoint3;
-                                }
-                                break;
-                            case DirectionSector.E:
-                                {
-                                    circle2EndDirection = NearestTangencyToDirection(circle1.Position + circle1Direction, circle2, directionToPoint);
-                                }
-                                break;
+                            circle1EndDirection = internalPoint1;
+                            circle2EndDirection = internalPoint3;
                         }
+                        break;
+                        case DirectionSector.B:
+                        {
+                            Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
+                            Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                        }
+                        break;
+                        case DirectionSector.C:
+                        {
+                            Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
+                            Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                        }
+                        break;
+                        case DirectionSector.D:
+                        {
+                            circle1EndDirection = internalPoint1;
+                            circle2EndDirection = internalPoint3;
+                        }
+                        break;
+                        case DirectionSector.E:
+                        {
+                            circle2EndDirection = NearestTangencyToDirection(circle1.Position + circle1Direction, circle2, directionToPoint);
+                        }
+                        break;
                     }
-                    break;
+                }
+                break;
                 case DirectionSector.B:
+                {
+                    switch (direction2)
                     {
-                        switch (direction2)
+                        case DirectionSector.A:
                         {
-                            case DirectionSector.A:
-                                {
-                                    Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                                }
-                                break;
-                            case DirectionSector.B:
-                                {
-                                    circle1EndDirection = internalPoint2;
-                                    circle2EndDirection = internalPoint4;
-                                }
-                                break;
-                            case DirectionSector.C:
-                                {
-                                    Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                                }
-                                break;
-                            case DirectionSector.D:
-                                {
-                                    circle2EndDirection = NearestTangencyToDirection(circle1.Position + circle1Direction, circle2, directionToPoint);
-                                }
-                                break;
-                            case DirectionSector.E:
-                                {
-                                    circle1EndDirection = internalPoint2;
-                                    circle2EndDirection = internalPoint4;
-                                }
-                                break;
+                            Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
+                            Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
                         }
+                        break;
+                        case DirectionSector.B:
+                        {
+                            circle1EndDirection = internalPoint2;
+                            circle2EndDirection = internalPoint4;
+                        }
+                        break;
+                        case DirectionSector.C:
+                        {
+                            Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
+                            Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                        }
+                        break;
+                        case DirectionSector.D:
+                        {
+                            circle2EndDirection = NearestTangencyToDirection(circle1.Position + circle1Direction, circle2, directionToPoint);
+                        }
+                        break;
+                        case DirectionSector.E:
+                        {
+                            circle1EndDirection = internalPoint2;
+                            circle2EndDirection = internalPoint4;
+                        }
+                        break;
                     }
-                    break;
+                }
+                break;
                 case DirectionSector.C:
-                    {
-                        Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                        Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                    }
-                    break;
+                {
+                    Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
+                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                }
+                break;
                 case DirectionSector.D:
+                {
+                    switch (direction2)
                     {
-                        switch (direction2)
+                        case DirectionSector.A:
                         {
-                            case DirectionSector.A:
-                                {
-                                    circle1EndDirection = internalPoint1;
-                                    circle2EndDirection = internalPoint3;
-                                }
-                                break;
-                            case DirectionSector.B:
-                                {
-                                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                                }
-                                break;
-                            case DirectionSector.C:
-                                {
-                                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                                }
-                                break;
-                            case DirectionSector.D:
-                                {
-                                    circle1EndDirection = internalPoint1;
-                                    circle2EndDirection = internalPoint3;
-                                }
-                                break;
-                            case DirectionSector.E:
-                                {
-                                    circle1EndDirection = externalPoint1;
-                                    circle2EndDirection = externalPoint3;
-                                }
-                                break;
+                            circle1EndDirection = internalPoint1;
+                            circle2EndDirection = internalPoint3;
                         }
+                        break;
+                        case DirectionSector.B:
+                        {
+                            Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                        }
+                        break;
+                        case DirectionSector.C:
+                        {
+                            Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                        }
+                        break;
+                        case DirectionSector.D:
+                        {
+                            circle1EndDirection = internalPoint1;
+                            circle2EndDirection = internalPoint3;
+                        }
+                        break;
+                        case DirectionSector.E:
+                        {
+                            circle1EndDirection = externalPoint1;
+                            circle2EndDirection = externalPoint3;
+                        }
+                        break;
                     }
-                    break;
+                }
+                break;
                 case DirectionSector.E:
+                {
+                    switch (direction2)
                     {
-                        switch (direction2)
+                        case DirectionSector.A:
                         {
-                            case DirectionSector.A:
-                                {
-                                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                                }
-                                break;
-                            case DirectionSector.B:
-                                {
-                                    circle1EndDirection = internalPoint2;
-                                    circle2EndDirection = internalPoint4;
-                                }
-                                break;
-                            case DirectionSector.C:
-                                {
-                                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
-                                }
-                                break;
-                            case DirectionSector.D:
-                                {
-                                    circle1EndDirection = externalPoint2;
-                                    circle2EndDirection = externalPoint4;
-                                }
-                                break;
-                            case DirectionSector.E:
-                                {
-                                    circle1EndDirection = internalPoint2;
-                                    circle2EndDirection = internalPoint4;
-                                }
-                                break;
+                            Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
                         }
+                        break;
+                        case DirectionSector.B:
+                        {
+                            circle1EndDirection = internalPoint2;
+                            circle2EndDirection = internalPoint4;
+                        }
+                        break;
+                        case DirectionSector.C:
+                        {
+                            Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                        }
+                        break;
+                        case DirectionSector.D:
+                        {
+                            circle1EndDirection = externalPoint2;
+                            circle2EndDirection = externalPoint4;
+                        }
+                        break;
+                        case DirectionSector.E:
+                        {
+                            circle1EndDirection = internalPoint2;
+                            circle2EndDirection = internalPoint4;
+                        }
+                        break;
                     }
-                    break;
+                }
+                break;
             }
         }
-        private static DirectionSector DefineSector(Circle circle, Vector2 direction, Circle relation)
-        {
-            ExternalTangencyBetweenTwoCirces(circle, relation, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
-            InternalTangencyBetweenTwoCirces(circle, relation, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
-
-            externalPoint1 = externalPoint1 - circle.Position;
-            externalPoint2 = externalPoint2 - circle.Position;
-            internalPoint1 = internalPoint1 - circle.Position;
-            internalPoint2 = internalPoint2 - circle.Position;
-
-            if (DirectionBetweenTwoDirections(direction, externalPoint1, internalPoint1))
-                return DirectionSector.A;
-            else if (DirectionBetweenTwoDirections(direction, externalPoint2, internalPoint2))
-                return DirectionSector.B;
-            else if (DirectionBetweenTwoDirections(direction, internalPoint1, internalPoint2))
-                return DirectionSector.C;
-            else if (DirectionBetweenTwoDirections(direction, externalPoint1, circle.Position - relation.Position))
-                return DirectionSector.D;
-            else if (DirectionBetweenTwoDirections(direction, externalPoint2, circle.Position - relation.Position))
-                return DirectionSector.E;
-            throw new Exception();
-        }
-        private enum DirectionSector { A, B, C, D, E }
 
         public static Vector2 NearestTangencyToDirection(Vector2 startPoint, Circle circle, Vector2 direction)
         {
