@@ -8,27 +8,22 @@ namespace ILibrary.Controllers
         private int _capacity;
         public int CapacityFactor;
 
-        public int Capacity { get => _capacity; set => _capacity = value; }
-        public int Count => _idList.Count;
-
         public IDController() : this(1) { }
         public IDController(int capacity) { _idList = new List<int>(Capacity = capacity); CreateIdList(); }
+
+        public int Capacity { get => _capacity; set => _capacity = value; }
+        public int Count => _idList.Count;
 
         private void CreateIdList()
         {
             CapacityFactor = _capacity;
             for (int i = 0; i < _capacity; i++)
-            {
                 _idList.Add(i);
-            }
         }
-
         private void ExpandCapacity(int count)
         {
             for (int i = 0; i < count; i++)
-            {
                 _idList.Add(_capacity + i);
-            }
             _capacity += count;
         }
 
@@ -39,7 +34,6 @@ namespace ILibrary.Controllers
             _idList.RemoveAt(0);
             return id;
         }
-
         public void ReturnID(int value) => _idList.Add(value);
     }
 }
