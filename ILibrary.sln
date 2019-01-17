@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26730.15
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILibrary", "ILibrary\ILibrary.csproj", "{F3AE47D4-3DA5-4390-983A-4004C35B1B03}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb", "ILibrary\Devdeb.csproj", "{F3AE47D4-3DA5-4390-983A-4004C35B1B03}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibraryTest", "LibraryTest\LibraryTest.csproj", "{53A1480F-67A1-44BD-A193-C721F88C184A}"
 EndProject
