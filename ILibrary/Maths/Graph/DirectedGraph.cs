@@ -1,4 +1,4 @@
-﻿namespace ILibrary.Maths.Graph
+﻿namespace Devdeb.Maths.Graph
 {
     public class DirectedGraph<TVertexValue> : Graph
     {

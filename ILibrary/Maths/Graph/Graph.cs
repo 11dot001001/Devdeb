@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ILibrary.Maths.Graph
+namespace Devdeb.Maths.Graph
 {
     public abstract class Graph
     {

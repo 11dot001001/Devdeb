@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ILibrary.Maths.Graph
+namespace Devdeb.Maths.Graph
 {
     public class UndirectedGraph<TVertexValue> : Graph, IEnumerable<GraphVertex<TVertexValue>>
     {

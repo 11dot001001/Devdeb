@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 
-namespace ILibrary.Maths.Graph
+namespace Devdeb.Maths.Graph
 {
     public abstract class GraphVertex : IEnumerable
     {

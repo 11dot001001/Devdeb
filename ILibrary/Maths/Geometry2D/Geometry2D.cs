@@ -1,9 +1,9 @@
-﻿using ILibrary.Maths.Equation;
+﻿using Devdeb.Maths.Equation;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ILibrary.Maths.Geometry2D
+namespace Devdeb.Maths.Geometry2D
 {
     public static class Geometry2D
     {
@@ -11,8 +11,8 @@ namespace ILibrary.Maths.Geometry2D
 
         private static DirectionSector DefineSector(Circle circle, Vector2 direction, Circle relation)
         {
-            ExternalTangencyBetweenTwoCirces(circle, relation, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
-            InternalTangencyBetweenTwoCirces(circle, relation, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
+            ExternalTangencyBetweenTwoCircles(circle, relation, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
+            InternalTangencyBetweenTwoCircles(circle, relation, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
 
             externalPoint1 = externalPoint1 - circle.Position;
             externalPoint2 = externalPoint2 - circle.Position;
@@ -39,8 +39,8 @@ namespace ILibrary.Maths.Geometry2D
             circle1EndDirection = circle1Direction;
             circle2EndDirection = circle2Direction;
 
-            ExternalTangencyBetweenTwoCirces(circle1, circle2, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
-            InternalTangencyBetweenTwoCirces(circle1, circle2, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
+            ExternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
+            InternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
 
             externalPoint1 = externalPoint1 - circle1.Position;
             externalPoint2 = externalPoint2 - circle1.Position;
@@ -214,8 +214,8 @@ namespace ILibrary.Maths.Geometry2D
             circle1EndDirection = circle1Direction;
             circle2EndDirection = circle2Direction;
 
-            ExternalTangencyBetweenTwoCirces(circle1, circle2, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
-            InternalTangencyBetweenTwoCirces(circle1, circle2, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
+            ExternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
+            InternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
 
             externalPoint1 = externalPoint1 - circle1.Position;
             externalPoint2 = externalPoint2 - circle1.Position;
@@ -245,14 +245,12 @@ namespace ILibrary.Maths.Geometry2D
                             break;
                             case DirectionSector.B:
                             {
-                                Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, externalPoint1, out circle1EndDirection);
                             }
                             break;
                             case DirectionSector.C:
                             {
-                                Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, externalPoint1, out circle1EndDirection);
                             }
                             break;
                             case DirectionSector.D:
@@ -263,7 +261,9 @@ namespace ILibrary.Maths.Geometry2D
                             break;
                             case DirectionSector.E:
                             {
-                                circle2EndDirection = NearestTangencyToDirection(circle1.Position + circle1Direction, circle2, directionToPoint);
+                                //circle2EndDirection = NearestTangencyToDirection(circle1.Position + circle1Direction, circle2, directionToPoint);
+                                circle1EndDirection = externalPoint1;
+                                circle2EndDirection = externalPoint3;
                             }
                             break;
                         }
@@ -340,8 +340,7 @@ namespace ILibrary.Maths.Geometry2D
                         {
                             case DirectionSector.A:
                             {
-                                Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, externalPoint2, out circle1EndDirection);
                             }
                             break;
                             case DirectionSector.B:
@@ -352,13 +351,13 @@ namespace ILibrary.Maths.Geometry2D
                             break;
                             case DirectionSector.C:
                             {
-                                Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, externalPoint2, out circle1EndDirection);
                             }
                             break;
                             case DirectionSector.D:
                             {
-                                circle2EndDirection = NearestTangencyToDirection(circle1.Position + circle1Direction, circle2, directionToPoint);
+                                circle1EndDirection = externalPoint2;
+                                circle2EndDirection = externalPoint4;
                             }
                             break;
                             case DirectionSector.E:
@@ -372,8 +371,70 @@ namespace ILibrary.Maths.Geometry2D
                 break;
                 case DirectionSector.C:
                 {
-                    Point2CirclePoint(circle1.Position + circle1Direction, circle2, circle2Direction, out circle2EndDirection);
-                    Point2CirclePoint(circle2.Position + circle2Direction, circle1, circle1Direction, out circle1EndDirection);
+                    if (isClockRotation)
+                        switch (direction2)
+                        {
+                            case DirectionSector.A:
+                            {
+                                circle1EndDirection = internalPoint1;
+                                circle2EndDirection = internalPoint3;
+                            }
+                            break;
+                            case DirectionSector.B:
+                            {
+                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, externalPoint1, out circle1EndDirection);
+                            }
+                            break;
+                            case DirectionSector.C:
+                            {
+                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, externalPoint1, out circle1EndDirection);
+                            }
+                            break;
+                            case DirectionSector.D:
+                            {
+                                circle1EndDirection = internalPoint1;
+                                circle2EndDirection = internalPoint3;
+                            }
+                            break;
+                            case DirectionSector.E:
+                            {
+                                circle1EndDirection = externalPoint1;
+                                circle2EndDirection = externalPoint3;
+                            }
+                            break;
+                        }
+                    else
+                        switch (direction2)
+                        {
+                            case DirectionSector.A:
+                            {
+                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, externalPoint2, out circle1EndDirection);
+                            }
+                            break;
+                            case DirectionSector.B:
+                            {
+                                circle1EndDirection = internalPoint2;
+                                circle2EndDirection = internalPoint4;
+                            }
+                            break;
+                            case DirectionSector.C:
+                            {
+                                Point2CirclePoint(circle2.Position + circle2Direction, circle1, externalPoint2, out circle1EndDirection);
+                            }
+                            break;
+                            case DirectionSector.D:
+                            {
+                                circle1EndDirection = externalPoint2;
+                                circle2EndDirection = externalPoint4;
+                            }
+                            break;
+                            case DirectionSector.E:
+                            {
+                                circle1EndDirection = internalPoint2;
+                                circle2EndDirection = internalPoint4;
+                            }
+                            break;
+                        }
                 }
                 break;
                 case DirectionSector.D:
@@ -567,7 +628,7 @@ namespace ILibrary.Maths.Geometry2D
             return Vector2.SignedAngle(leftTangencyDirection, circlePointDirection) >= 0 && Vector2.SignedAngle(rightTangencyDirection, circlePointDirection) <= 0;
         }
 
-        public static bool ExternalTangencyBetweenTwoCirces(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2, out Vector2 intersectedPoint3, out Vector2 intersectedPoint4)
+        public static bool ExternalTangencyBetweenTwoCircles(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2, out Vector2 intersectedPoint3, out Vector2 intersectedPoint4)
         {
             if (circle1.Position.Equals(circle2.Position))
                 throw new ArithmeticException("The centers of circles are equal.");
@@ -624,7 +685,7 @@ namespace ILibrary.Maths.Geometry2D
                 return true;
             }
         }
-        public static bool InternalTangencyBetweenTwoCirces(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2, out Vector2 intersectedPoint3, out Vector2 intersectedPoint4)
+        public static bool InternalTangencyBetweenTwoCircles(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2, out Vector2 intersectedPoint3, out Vector2 intersectedPoint4)
         {
             if (circle1.Position.Equals(circle2.Position))
                 throw new ArithmeticException("The centers of circles are equal.");

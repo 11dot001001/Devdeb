@@ -7,8 +7,8 @@
     <ProjectGuid>{F3AE47D4-3DA5-4390-983A-4004C35B1B03}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ILibrary</RootNamespace>
-    <AssemblyName>ILibrary</AssemblyName>
+    <RootNamespace>Devdeb</RootNamespace>
+    <AssemblyName>Devdeb</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />

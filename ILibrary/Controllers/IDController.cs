@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace ILibrary.Controllers
+namespace Devdeb.Controllers
 {
     public class IDController
     {

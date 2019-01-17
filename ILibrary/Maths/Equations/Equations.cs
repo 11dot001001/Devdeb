@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ILibrary.Maths.Equation
+namespace Devdeb.Maths.Equation
 {
     public static class Equations
     {

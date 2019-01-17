@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Drawing;
 
-namespace ILibrary.Cryptography
+namespace Devdeb.Cryptography
 {
     public class Steganography
     {

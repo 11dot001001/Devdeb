@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-namespace ILibrary.Maths.Geometry2D
+namespace Devdeb.Maths.Geometry2D
 {
     public struct Circle
     {
