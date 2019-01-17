@@ -50,11 +50,5 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\ILibrary\Devdeb.csproj">
-      <Project>{f3ae47d4-3da5-4390-983a-4004c35b1b03}</Project>
-      <Name>Devdeb</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
