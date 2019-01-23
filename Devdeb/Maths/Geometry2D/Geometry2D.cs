@@ -718,10 +718,10 @@ namespace Devdeb.Maths.Geometry2D
             float sin = Mathf.Sin(angle);
             return new Vector2(vector.x * cos + vector.y * sin, vector.x * -sin + vector.y * cos);
         }
-        public static void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, out List<Vector2> way) => Rotate(circle, tangencyDirection1, tangencyDirection2, rotateAngle, ShortestClockwiseRotation(tangencyDirection1, tangencyDirection2), out way);
-        public static void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, out List<Vector2> way)
+        public static void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, out List<Vector2> directions) => Rotate(circle, tangencyDirection1, tangencyDirection2, rotateAngle, ShortestClockwiseRotation(tangencyDirection1, tangencyDirection2), out directions);
+        public static void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, out List<Vector2> directions)
         {
-            way = new List<Vector2>();
+            directions = new List<Vector2>();
             float angle;
             float factor = isClockWise ? 1 : -1;
             angle = Vector2.Angle(tangencyDirection1, tangencyDirection2);
@@ -729,12 +729,12 @@ namespace Devdeb.Maths.Geometry2D
             {
                 if (angle < rotateAngle)
                 {
-                    way.Add(circle.Position + tangencyDirection2);
+                    directions.Add(tangencyDirection2);
                     break;
                 }
                 tangencyDirection1 = Rotate(tangencyDirection1, factor * rotateAngle * Mathf.Deg2Rad);
                 angle = Vector2.Angle(tangencyDirection1, tangencyDirection2);
-                way.Add(circle.Position + tangencyDirection1);
+                directions.Add(tangencyDirection1);
             }
         }
         public static void AddRotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, ref List<Vector2> way)
