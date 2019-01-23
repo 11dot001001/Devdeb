@@ -5,11 +5,11 @@ using UnityEngine;
 
 namespace Devdeb.Maths.Geometry2D
 {
-    public static class Geometry2D
+    static public class Geometry2D
     {
         private enum DirectionSector { A, B, C, D, E }
 
-        private static DirectionSector DefineSector(Circle circle, Vector2 direction, Circle relation)
+        static private DirectionSector DefineSector(Circle circle, Vector2 direction, Circle relation)
         {
             ExternalTangencyBetweenTwoCircles(circle, relation, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
             InternalTangencyBetweenTwoCircles(circle, relation, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
@@ -32,7 +32,7 @@ namespace Devdeb.Maths.Geometry2D
             throw new Exception();
         }
 
-        public static void CircleDirection2CircleDirection(Circle circle1, Vector2 circle1Direction, Circle circle2, Vector2 circle2Direction, out Vector2 circle1EndDirection, out Vector2 circle2EndDirection)
+        static public void CircleDirection2CircleDirection(Circle circle1, Vector2 circle1Direction, Circle circle2, Vector2 circle2Direction, out Vector2 circle1EndDirection, out Vector2 circle2EndDirection)
         {
             circle1Direction = circle1Direction.normalized * circle1.Radius;
             circle2Direction = circle2Direction.normalized * circle2.Radius;
@@ -207,7 +207,7 @@ namespace Devdeb.Maths.Geometry2D
                 break;
             }
         }
-        public static void CircleDirection2CircleDirection(Circle circle1, Vector2 circle1Direction, Circle circle2, Vector2 circle2Direction, bool isClockRotation, float rotateAngle, out Vector2 circle1EndDirection, out Vector2 circle2EndDirection)
+        static public void CircleDirection2CircleDirection(Circle circle1, Vector2 circle1Direction, Circle circle2, Vector2 circle2Direction, bool isClockRotation, float rotateAngle, out Vector2 circle1EndDirection, out Vector2 circle2EndDirection)
         {
             circle1Direction = circle1Direction.normalized * circle1.Radius;
             circle2Direction = circle2Direction.normalized * circle2.Radius;
@@ -576,14 +576,14 @@ namespace Devdeb.Maths.Geometry2D
             }
         }
 
-        public static Vector2 NearestTangencyToDirection(Vector2 startPoint, Circle circle, Vector2 direction)
+        static public Vector2 NearestTangencyToDirection(Vector2 startPoint, Circle circle, Vector2 direction)
         {
             Point2CircleTangencyDirectionOriented(startPoint, circle, out Vector2 leftTangencyDirection, out Vector2 rightTangencyDirection);
             float a = Vector2.Angle(circle.Position + leftTangencyDirection - startPoint, direction);
             float b = Vector2.Angle(circle.Position + rightTangencyDirection - startPoint, direction);
             return a < b ? leftTangencyDirection : rightTangencyDirection;
         }
-        public static bool DirectionBetweenTwoDirections(Vector2 direction, Vector2 direction1, Vector2 direction2)
+        static public bool DirectionBetweenTwoDirections(Vector2 direction, Vector2 direction1, Vector2 direction2)
         {
             float angle = Vector2.SignedAngle(Vector2.right, direction);
             angle = angle < 0 ? 360 + angle : angle;
@@ -608,27 +608,27 @@ namespace Devdeb.Maths.Geometry2D
 
             return angle >= angle1 && angle <= angle2;
         }
-        public static bool DirectionBetweenTwoDirections(Vector2 direction, Vector2 direction1, Vector2 direction2, Vector2 relation) => DirectionBetweenTwoDirections(direction, relation, direction1) || DirectionBetweenTwoDirections(direction, relation, direction2);
+        static public bool DirectionBetweenTwoDirections(Vector2 direction, Vector2 direction1, Vector2 direction2, Vector2 relation) => DirectionBetweenTwoDirections(direction, relation, direction1) || DirectionBetweenTwoDirections(direction, relation, direction2);
 
-        public static void Point2CirclePoint(Vector2 point1, Circle circle2, Vector2 circle2Direction, out Vector2 circleStartDirection)
+        static public void Point2CirclePoint(Vector2 point1, Circle circle2, Vector2 circle2Direction, out Vector2 circleStartDirection)
         {
             circleStartDirection = circle2Direction;
             if (!DirectionBetweenTangency(point1, circle2, circle2Direction))
                 circleStartDirection = NearestTangencyToDirection(point1, circle2, circle2.Position + circle2Direction - point1);
         }
-        public static bool DirectionBetweenTangency(Vector2 startPoint, Circle circle, Vector2 circleDirection)
+        static public bool DirectionBetweenTangency(Vector2 startPoint, Circle circle, Vector2 circleDirection)
         {
             Point2CircleTangencyDirection(startPoint, circle, out Vector2 leftTangencyDirection, out Vector2 rightTangencyDirection);
             return DirectionBetweenTwoDirections(circleDirection, leftTangencyDirection, rightTangencyDirection);
         }
-        public static bool PointInCircleOfRangeTangencyAngle(Vector2 point, Circle circle, Vector2 circlePoint, out Vector2 leftTangencyDirection, out Vector2 rightTangencyDirection)
+        static public bool PointInCircleOfRangeTangencyAngle(Vector2 point, Circle circle, Vector2 circlePoint, out Vector2 leftTangencyDirection, out Vector2 rightTangencyDirection)
         {
             Point2CircleTangencyDirectionOriented(point, circle, out leftTangencyDirection, out rightTangencyDirection);
             Vector2 circlePointDirection = circlePoint - circle.Position;
             return Vector2.SignedAngle(leftTangencyDirection, circlePointDirection) >= 0 && Vector2.SignedAngle(rightTangencyDirection, circlePointDirection) <= 0;
         }
 
-        public static bool ExternalTangencyBetweenTwoCircles(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2, out Vector2 intersectedPoint3, out Vector2 intersectedPoint4)
+        static public bool ExternalTangencyBetweenTwoCircles(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2, out Vector2 intersectedPoint3, out Vector2 intersectedPoint4)
         {
             if (circle1.Position.Equals(circle2.Position))
                 throw new ArithmeticException("The centers of circles are equal.");
@@ -685,7 +685,7 @@ namespace Devdeb.Maths.Geometry2D
                 return true;
             }
         }
-        public static bool InternalTangencyBetweenTwoCircles(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2, out Vector2 intersectedPoint3, out Vector2 intersectedPoint4)
+        static public bool InternalTangencyBetweenTwoCircles(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2, out Vector2 intersectedPoint3, out Vector2 intersectedPoint4)
         {
             if (circle1.Position.Equals(circle2.Position))
                 throw new ArithmeticException("The centers of circles are equal.");
@@ -712,14 +712,27 @@ namespace Devdeb.Maths.Geometry2D
             return true;
         }
 
-        public static Vector2 Rotate(Vector2 vector, float angle)
+        static public float Angle(Vector2 from, Vector2 to, bool isClockRotate)
+        {
+            float rotateAngle = Vector2.SignedAngle(from, to);
+            if (isClockRotate)
+                if (rotateAngle < 0)
+                    rotateAngle *= -1F;
+                else
+                    rotateAngle = 360F - rotateAngle;
+            else
+                if (rotateAngle < 0)
+                rotateAngle = 360F + rotateAngle;
+            return rotateAngle;
+        }
+        static public Vector2 Rotate(Vector2 vector, float angle)
         {
             float cos = Mathf.Cos(angle);
             float sin = Mathf.Sin(angle);
             return new Vector2(vector.x * cos + vector.y * sin, vector.x * -sin + vector.y * cos);
         }
-        public static void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, out List<Vector2> directions) => Rotate(circle, tangencyDirection1, tangencyDirection2, rotateAngle, ShortestClockwiseRotation(tangencyDirection1, tangencyDirection2), out directions);
-        public static void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, out List<Vector2> directions)
+        static public void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, out List<Vector2> directions) => Rotate(circle, tangencyDirection1, tangencyDirection2, rotateAngle, ShortestClockwiseRotation(tangencyDirection1, tangencyDirection2), out directions);
+        static public void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, out List<Vector2> directions)
         {
             directions = new List<Vector2>();
             float angle;
@@ -737,13 +750,13 @@ namespace Devdeb.Maths.Geometry2D
                 directions.Add(tangencyDirection1);
             }
         }
-        public static void AddRotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, ref List<Vector2> way)
+        static public void AddRotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, ref List<Vector2> way)
         {
             Rotate(circle, tangencyDirection1, tangencyDirection2, rotateAngle, isClockWise, out List<Vector2> way2);
             way.AddRange(way2);
         }
 
-        public static bool Line2CircleIntersectOriented(Vector2 point1, Vector2 point2, Circle circle, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2)
+        static public bool Line2CircleIntersectOriented(Vector2 point1, Vector2 point2, Circle circle, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2)
         {
             if (!Line2CircleIntersect(point1, point2, circle, out intersectedPoint1, out intersectedPoint2))
                 return false;
@@ -755,7 +768,7 @@ namespace Devdeb.Maths.Geometry2D
             }
             return true;
         }
-        public static bool Line2CircleIntersect(Vector2 point1, Vector2 point2, Circle circle, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2)
+        static public bool Line2CircleIntersect(Vector2 point1, Vector2 point2, Circle circle, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2)
         {
             if (point1.Equals(point2))
                 throw new ArithmeticException("The line points are equal.");
@@ -797,7 +810,7 @@ namespace Devdeb.Maths.Geometry2D
             }
         }
 
-        public static bool Circle2CircelIntersectOriented(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2)
+        static public bool Circle2CircelIntersectOriented(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2)
         {
             if (!Circle2CircelIntersect(circle1, circle2, out intersectedPoint1, out intersectedPoint2))
                 return false;
@@ -809,7 +822,7 @@ namespace Devdeb.Maths.Geometry2D
             }
             return true;
         }
-        public static bool Circle2CircelIntersect(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2)
+        static public bool Circle2CircelIntersect(Circle circle1, Circle circle2, out Vector2 intersectedPoint1, out Vector2 intersectedPoint2)
         {
             if (circle1.Position.Equals(circle2.Position))
                 throw new ArithmeticException("The centers of circles are equal.");
@@ -854,7 +867,7 @@ namespace Devdeb.Maths.Geometry2D
             }
         }
 
-        public static void Point2CircleTangencyDirection(Vector2 point, Circle circle, out Vector2 tangencyDirection1, out Vector2 tangencyDirection2)
+        static public void Point2CircleTangencyDirection(Vector2 point, Circle circle, out Vector2 tangencyDirection1, out Vector2 tangencyDirection2)
         {
             Vector2 temp = point - circle.Position;
             if (temp.magnitude < circle.Radius)
@@ -869,7 +882,7 @@ namespace Devdeb.Maths.Geometry2D
             tangencyDirection1 = (tangencyDirection1 - circle.Position).normalized * circle.Radius;
             tangencyDirection2 = (tangencyDirection2 - circle.Position).normalized * circle.Radius;
         }
-        public static void Point2CircleTangencyDirectionOriented(Vector2 point, Circle circle, out Vector2 leftTangencyDirection, out Vector2 rightTangencyDirection)
+        static public void Point2CircleTangencyDirectionOriented(Vector2 point, Circle circle, out Vector2 leftTangencyDirection, out Vector2 rightTangencyDirection)
         {
             Point2CircleTangencyDirection(point, circle, out leftTangencyDirection, out rightTangencyDirection);
             if (Vector2.SignedAngle((point - circle.Position).normalized * circle.Radius, rightTangencyDirection) < 0)
@@ -880,6 +893,6 @@ namespace Devdeb.Maths.Geometry2D
             }
         }
 
-        public static bool ShortestClockwiseRotation(Vector2 startDirection, Vector2 endDirection) => Vector2.SignedAngle(startDirection, endDirection) > 0 ? false : true;
+        static public bool ShortestClockwiseRotation(Vector2 startDirection, Vector2 endDirection) => Vector2.SignedAngle(startDirection, endDirection) > 0 ? false : true;
     }
 }
