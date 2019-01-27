@@ -712,32 +712,26 @@ namespace Devdeb.Maths.Geometry2D
             return true;
         }
 
-        static public float Angle(Vector2 from, Vector2 to, bool isClockRotate)
+        static public float Angle(Vector2 from, Vector2 to, bool clockWise)
         {
-            float rotateAngle = Vector2.SignedAngle(from, to);
-            if (isClockRotate)
-                if (rotateAngle < 0)
-                    rotateAngle *= -1F;
-                else
-                    rotateAngle = 360F - rotateAngle;
-            else
-                if (rotateAngle < 0)
-                rotateAngle = 360F + rotateAngle;
-            return rotateAngle;
+            float angle = Vector2.SignedAngle(from, to);
+            if (clockWise)
+                angle = -angle;
+            return angle < 0 ? 360F + angle : angle;
         }
-        static public Vector2 Rotate(Vector2 vector, float angle)
+        static public Vector2 Rotate(Vector2 vector, float radian)
         {
-            float cos = Mathf.Cos(angle);
-            float sin = Mathf.Sin(angle);
+            float cos = Mathf.Cos(radian);
+            float sin = Mathf.Sin(radian);
             return new Vector2(vector.x * cos + vector.y * sin, vector.x * -sin + vector.y * cos);
         }
         static public void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, out List<Vector2> directions) => Rotate(circle, tangencyDirection1, tangencyDirection2, rotateAngle, ShortestClockwiseRotation(tangencyDirection1, tangencyDirection2), out directions);
-        static public void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, out List<Vector2> directions)
+        static public void Rotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool clockWise, out List<Vector2> directions)
         {
             directions = new List<Vector2>();
             float angle;
-            float factor = isClockWise ? 1 : -1;
-            angle = Vector2.Angle(tangencyDirection1, tangencyDirection2);
+            float factor = clockWise ? 1 : -1;
+            angle = Angle(tangencyDirection1, tangencyDirection2, clockWise);
             for (; ; )
             {
                 if (angle < rotateAngle)
@@ -746,13 +740,13 @@ namespace Devdeb.Maths.Geometry2D
                     break;
                 }
                 tangencyDirection1 = Rotate(tangencyDirection1, factor * rotateAngle * Mathf.Deg2Rad);
-                angle = Vector2.Angle(tangencyDirection1, tangencyDirection2);
+                angle -= rotateAngle;
                 directions.Add(tangencyDirection1);
             }
         }
-        static public void AddRotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool isClockWise, ref List<Vector2> way)
+        static public void AddRotate(Circle circle, Vector2 tangencyDirection1, Vector2 tangencyDirection2, float rotateAngle, bool clockWise, ref List<Vector2> way)
         {
-            Rotate(circle, tangencyDirection1, tangencyDirection2, rotateAngle, isClockWise, out List<Vector2> way2);
+            Rotate(circle, tangencyDirection1, tangencyDirection2, rotateAngle, clockWise, out List<Vector2> way2);
             way.AddRange(way2);
         }
 
