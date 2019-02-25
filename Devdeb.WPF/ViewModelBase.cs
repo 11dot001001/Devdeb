@@ -27,5 +27,4 @@ namespace Devdeb.WPF
         public event EventHandler ModelChanged;
         public event PropertyChangedEventHandler PropertyChanged;
     }
-
 }
