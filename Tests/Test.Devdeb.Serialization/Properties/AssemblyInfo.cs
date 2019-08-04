@@ -2,18 +2,18 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("Devdeb.WPF.Test")]
+[assembly: AssemblyTitle("Test.Devdeb.Serialization")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Devdeb.WPF.Test")]
+[assembly: AssemblyProduct("Test.Devdeb.Serialization")]
 [assembly: AssemblyCopyright("Copyright ©  2019")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
 [assembly: ComVisible(false)]
 
-[assembly: Guid("1c0e9fea-ba79-4cbd-8b8f-044d9a1d3ae0")]
+[assembly: Guid("8aac1321-8fe5-4efe-a82f-3d70cb6e7b33")]
 
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]

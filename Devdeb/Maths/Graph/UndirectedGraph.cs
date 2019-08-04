@@ -16,8 +16,8 @@ namespace Devdeb.Maths.Graph
         }
         public void RemoveRelation(GraphVertex<TVertexValue> vertex1, GraphVertex<TVertexValue> vertex2)
         {
-            vertex1._relations.Remove(vertex2);
-            vertex2._relations.Remove(vertex1);
+            _ = vertex1._relations.Remove(vertex2);
+            _ = vertex2._relations.Remove(vertex1);
         }
 
         public IEnumerator<GraphVertex<TVertexValue>> GetEnumerator() => _vertices.Cast<GraphVertex<TVertexValue>>().GetEnumerator();
@@ -36,8 +36,8 @@ namespace Devdeb.Maths.Graph
         }
         public void RemoveRelation(GraphVertex<TVertexValue> vertex1, GraphVertex<TVertexValue> vertex2)
         {
-            vertex1._relations.Remove(vertex2);
-            vertex2._relations.Remove(vertex1);
+            _ = vertex1._relations.Remove(vertex2);
+            _ = vertex2._relations.Remove(vertex1);
         }
 
         public IEnumerator<GraphVertex<TVertexValue>> GetEnumerator() => _vertices.Cast<GraphVertex<TVertexValue>>().GetEnumerator();

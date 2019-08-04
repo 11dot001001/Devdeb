@@ -11,13 +11,13 @@ namespace Devdeb.Maths.Geometry2D
 
         static private DirectionSector DefineSector(Circle circle, Vector2 direction, Circle relation)
         {
-            ExternalTangencyBetweenTwoCircles(circle, relation, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
-            InternalTangencyBetweenTwoCircles(circle, relation, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
+            _ = ExternalTangencyBetweenTwoCircles(circle, relation, out Vector2 externalPoint1, out Vector2 externalPoint2, out _, out _);
+            _ = InternalTangencyBetweenTwoCircles(circle, relation, out Vector2 internalPoint1, out Vector2 internalPoint2, out _, out _);
 
-            externalPoint1 = externalPoint1 - circle.Position;
-            externalPoint2 = externalPoint2 - circle.Position;
-            internalPoint1 = internalPoint1 - circle.Position;
-            internalPoint2 = internalPoint2 - circle.Position;
+            externalPoint1 -= circle.Position;
+            externalPoint2 -= circle.Position;
+            internalPoint1 -= circle.Position;
+            internalPoint2 -= circle.Position;
 
             if (DirectionBetweenTwoDirections(direction, externalPoint1, internalPoint1))
                 return DirectionSector.A;
@@ -39,17 +39,17 @@ namespace Devdeb.Maths.Geometry2D
             circle1EndDirection = circle1Direction;
             circle2EndDirection = circle2Direction;
 
-            ExternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
-            InternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
+            _ = ExternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
+            _ = InternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
 
-            externalPoint1 = externalPoint1 - circle1.Position;
-            externalPoint2 = externalPoint2 - circle1.Position;
-            internalPoint1 = internalPoint1 - circle1.Position;
-            internalPoint2 = internalPoint2 - circle1.Position;
-            externalPoint3 = externalPoint3 - circle2.Position;
-            externalPoint4 = externalPoint4 - circle2.Position;
-            internalPoint3 = internalPoint3 - circle2.Position;
-            internalPoint4 = internalPoint4 - circle2.Position;
+            externalPoint1 -= circle1.Position;
+            externalPoint2 -= circle1.Position;
+            internalPoint1 -= circle1.Position;
+            internalPoint2 -= circle1.Position;
+            externalPoint3 -= circle2.Position;
+            externalPoint4 -= circle2.Position;
+            internalPoint3 -= circle2.Position;
+            internalPoint4 -= circle2.Position;
 
             DirectionSector direction1 = DefineSector(circle1, circle1Direction, circle2);
             DirectionSector direction2 = DefineSector(circle2, circle2Direction, circle1);
@@ -214,22 +214,21 @@ namespace Devdeb.Maths.Geometry2D
             circle1EndDirection = circle1Direction;
             circle2EndDirection = circle2Direction;
 
-            ExternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
-            InternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
+            _ = ExternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 externalPoint1, out Vector2 externalPoint2, out Vector2 externalPoint3, out Vector2 externalPoint4);
+            _ = InternalTangencyBetweenTwoCircles(circle1, circle2, out Vector2 internalPoint1, out Vector2 internalPoint2, out Vector2 internalPoint3, out Vector2 internalPoint4);
 
-            externalPoint1 = externalPoint1 - circle1.Position;
-            externalPoint2 = externalPoint2 - circle1.Position;
-            internalPoint1 = internalPoint1 - circle1.Position;
-            internalPoint2 = internalPoint2 - circle1.Position;
-            externalPoint3 = externalPoint3 - circle2.Position;
-            externalPoint4 = externalPoint4 - circle2.Position;
-            internalPoint3 = internalPoint3 - circle2.Position;
-            internalPoint4 = internalPoint4 - circle2.Position;
+            externalPoint1 -= circle1.Position;
+            externalPoint2 -= circle1.Position;
+            internalPoint1 -= circle1.Position;
+            internalPoint2 -= circle1.Position;
+            externalPoint3 -= circle2.Position;
+            externalPoint4 -= circle2.Position;
+            internalPoint3 -= circle2.Position;
+            internalPoint4 -= circle2.Position;
 
             DirectionSector direction1 = DefineSector(circle1, circle1Direction, circle2);
             DirectionSector direction2 = DefineSector(circle2, circle2Direction, circle1);
 
-            Vector2 directionToPoint = circle2.Position + circle2Direction - circle1.Position + circle1Direction;
             switch (direction1)
             {
                 case DirectionSector.A:
@@ -261,7 +260,6 @@ namespace Devdeb.Maths.Geometry2D
                             break;
                             case DirectionSector.E:
                             {
-                                //circle2EndDirection = NearestTangencyToDirection(circle1.Position + circle1Direction, circle2, directionToPoint);
                                 circle1EndDirection = externalPoint1;
                                 circle2EndDirection = externalPoint3;
                             }
@@ -871,7 +869,7 @@ namespace Devdeb.Maths.Geometry2D
             Vector2 p = oan * circle.Radius;
             Vector2 p90 = new Vector2(p.normalized.y, -p.normalized.x) + p;
 
-            Line2CircleIntersect(circle.Position + p, circle.Position + p90, new Circle(circle.Position, oa.magnitude), out tangencyDirection1, out tangencyDirection2);
+            _ = Line2CircleIntersect(circle.Position + p, circle.Position + p90, new Circle(circle.Position, oa.magnitude), out tangencyDirection1, out tangencyDirection2);
 
             tangencyDirection1 = (tangencyDirection1 - circle.Position).normalized * circle.Radius;
             tangencyDirection2 = (tangencyDirection2 - circle.Position).normalized * circle.Radius;
