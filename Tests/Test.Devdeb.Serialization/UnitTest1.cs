@@ -385,4 +385,61 @@ namespace Test.Devdeb.Serialization
         void Serialize(T instance, byte[] buffer, ref int index);
         T Deserialize(byte[] buffer, ref int index);
     }
+
+    public interface ISerializer<T>
+    {
+        int Count(T instance);
+        void Serialize(T instance, byte[] buffer, ref int index);
+        T Deserialize(byte[] buffer, ref int index);
+    }
+
+    public abstract class Serializer<T> : ISerializer<T>
+    {
+        static public ISerializer<T> Default;
+
+        static Serializer() => Default = 
+
+        public abstract int Count(T instance);
+        public abstract void Serialize(T instance, byte[] buffer, ref int index);
+        public abstract T Deserialize(byte[] buffer, ref int index);
+    }
+    public abstract class ContantLenghtSerializer<T> : ISerializer<T>
+    {
+        static private int _count;
+
+        protected ContantLenghtSerializer(int count) => _count = count;
+
+        static public int Count => _count;
+        public abstract T Deserialize(byte[] buffer, ref int index);
+        public abstract void Serialize(T instance, byte[] buffer, ref int index);
+
+        int ISerializer<T>.Count(T instance) => _count;
+    }
+    public class StringSerializer : Serializer<string>
+    {
+        public override int Count(string instance) => IntegerSerializer.Count + Encoding.UTF8.GetByteCount(instance);
+        public override string Deserialize(byte[] buffer, ref int index) => throw new NotImplementedException();
+        public override void Serialize(string instance, byte[] buffer, ref int index) => throw new NotImplementedException();
+    }
+    public class IntegerSerializer : ContantLenghtSerializer<int>
+    {
+        public IntegerSerializer() : base(sizeof(int)) { }
+
+        public override void Serialize(int instance, byte[] buffer, ref int index)
+        {
+            buffer[index++] = (byte)(instance >> 24);
+            buffer[index++] = (byte)(instance >> 16);
+            buffer[index++] = (byte)(instance >> 8);
+            buffer[index++] = (byte)instance;
+        }
+        public override int Deserialize(byte[] buffer, ref int index)
+        {
+            int value = 0;
+            value |= buffer[index++] << 24;
+            value |= buffer[index++] << 16;
+            value |= buffer[index++] << 8;
+            value |= buffer[index++];
+            return value;
+        }
+    }
 }
