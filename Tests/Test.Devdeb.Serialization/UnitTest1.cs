@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -393,11 +395,70 @@ namespace Test.Devdeb.Serialization
         T Deserialize(byte[] buffer, ref int index);
     }
 
+    static public class SerializerBuilder
+    {
+        public ISerializer<T> Create<T>(SerializerBuilderSettings<T> serializerBuilderSettings)
+        {
+
+        }
+    }
+
+    internal class MemberSerializerInfo<T>
+    {
+        public MemberInfo Member;
+        public object Serializer;
+
+        public MemberSerializerInfo(MemberInfo member, object serializer)
+        {
+            Member = member ?? throw new ArgumentNullException(nameof(member));
+            Serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+        }
+    }
+
+    public abstract class SerializerBuilder<T>
+    {
+        private readonly List<MemberSerializerInfo<T>> _membersInformation;
+
+        public SerializerBuilder()
+        {
+            _membersInformation = new List<MemberSerializerInfo<T>>();
+            Build(new SerializerBuilderSettings<T>(_membersInformation));
+        }
+
+        public abstract void Build(SerializerBuilderSettings<T> serializerBuilderSettings);
+    }
+
+    public class SerializerBuilderSettings<T>
+    {
+        private readonly List<MemberSerializerInfo<T>> _membersInformation;
+
+        internal SerializerBuilderSettings(object membersInformation) => _membersInformation = (List<MemberSerializerInfo<T>>)membersInformation;
+
+        public void AddMember<TMember>(Expression<Func<T, TMember>> member, object serializer) => _membersInformation.Add(new MemberSerializerInfo<T>(member.Body, serializer));
+    }
+
+    public class Target
+    {
+        public int Integer { get; set; }
+        public string Str { get; set; }
+    }
+
+    public class TargetSerializer : SerializerBuilder<Target>
+    {
+        public override void Build(SerializerBuilderSettings<Target> serializerBuilderSettings)
+        {
+            serializerBuilderSettings.AddMember(x => x.Integer, new IntegerSerializer());
+            serializerBuilderSettings.AddMember(x => x.Str, new StringSerializer());
+        }
+    }
+
+
+
     public abstract class Serializer<T> : ISerializer<T>
     {
         static public ISerializer<T> Default;
 
-        static Serializer() => Default = 
+        static Serializer() => Default =
 
         public abstract int Count(T instance);
         public abstract void Serialize(T instance, byte[] buffer, ref int index);
