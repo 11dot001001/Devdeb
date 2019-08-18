@@ -83,6 +83,20 @@ namespace Test.Devdeb.Serialization
             int readIndex = 0;
             Class newInstance = defaultClassSerializer.Deserialize(buffer, ref readIndex);
         }
+        [TestMethod]
+        public unsafe void Test()
+        {
+            uint value1 = uint.MaxValue - 1;
+
+            byte[] bytes = new byte[4];
+            fixed(byte* bufferAddress = &bytes[0])
+                *(uint*)bufferAddress = value1;
+            
+
+            uint value2;
+            fixed (byte* bufferAddress = &bytes[0])
+                value2 = *(uint*)bufferAddress;
+        }
     }
 
     public class Class
@@ -413,33 +427,33 @@ namespace Test.Devdeb.Serialization
     }
 
 
-    public abstract class SerializerBuilder<T>
-    {
-        static public Dictionary<Type, ISerializer<T>> _converters;
+    //public abstract class SerializerBuilder<T>
+    //{
+    //    static public Dictionary<Type, ISerializer<T>> _converters;
 
-        static SerializerBuilder() => _converters = new Dictionary<Type, ISerializer<T>>();
+    //    static SerializerBuilder() => _converters = new Dictionary<Type, ISerializer<T>>();
 
-        private readonly List<MemberSerializerInfo<T>> _membersInformation;
+    //    private readonly List<MemberSerializerInfo<T>> _membersInformation;
 
-        public SerializerBuilder()
-        {
-            _membersInformation = new List<MemberSerializerInfo<T>>();
-            Build(new SerializerBuilderSettings<T>(_membersInformation));
-            _converters.Add(GetType(), SerializerBuilder.Create(_membersInformation));
-        }
+    //    public SerializerBuilder()
+    //    {
+    //        _membersInformation = new List<MemberSerializerInfo<T>>();
+    //        Build(new SerializerBuilderSettings<T>(_membersInformation));
+    //        _converters.Add(GetType(), SerializerBuilder.Create(_membersInformation));
+    //    }
 
-        public abstract void Build(SerializerBuilderSettings<T> serializerBuilderSettings);
-    }
+    //    public abstract void Build(SerializerBuilderSettings<T> serializerBuilderSettings);
+    //}
 
-    public class SerializerBuilderSettings<T>
-    {
-        private readonly List<MemberSerializerInfo<T>> _membersInformation;
+    //public class SerializerBuilderSettings<T>
+    //{
+    //    private readonly List<MemberSerializerInfo<T>> _membersInformation;
 
-        internal SerializerBuilderSettings(object membersInformation) => _membersInformation = (List<MemberSerializerInfo<T>>)membersInformation;
+    //    internal SerializerBuilderSettings(object membersInformation) => _membersInformation = (List<MemberSerializerInfo<T>>)membersInformation;
 
-        public void AddMember<TMember>(Expression<Func<T, TMember>> member, object serializer) => _membersInformation.Add(new MemberSerializerInfo<T>(member.Body, serializer));
-        public void AddMember<TMember>(Expression<Func<T, TMember>> member) => _membersInformation.Add(new MemberSerializerInfo<T>(member.Body, serializer));
-    }
+    //    //public void AddMember<TMember>(Expression<Func<T, TMember>> member, object serializer) => _membersInformation.Add(new MemberSerializerInfo<T>(member.Body, serializer));
+    //    //public void AddMember<TMember>(Expression<Func<T, TMember>> member) => _membersInformation.Add(new MemberSerializerInfo<T>(member.Body, serializer));
+    //}
 
     public class Target
     {
@@ -447,14 +461,14 @@ namespace Test.Devdeb.Serialization
         public string Str { get; set; }
     }
 
-    public class TargetSerializer : SerializerBuilder<Target>
-    {
-        public override void Build(SerializerBuilderSettings<Target> serializerBuilderSettings)
-        {
-            serializerBuilderSettings.AddMember(x => x.Integer, new IntegerSerializer());
-            serializerBuilderSettings.AddMember(x => x.Str, new StringSerializer());
-        }
-    }
+    //public class TargetSerializer : SerializerBuilder<Target>
+    //{
+    //    public override void Build(SerializerBuilderSettings<Target> serializerBuilderSettings)
+    //    {
+    //        serializerBuilderSettings.AddMember(x => x.Integer, new IntegerSerializer());
+    //        serializerBuilderSettings.AddMember(x => x.Str, new StringSerializer());
+    //    }
+    //}
 
 
 
