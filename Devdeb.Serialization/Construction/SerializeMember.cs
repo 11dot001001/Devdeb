@@ -10,13 +10,14 @@ namespace Devdeb.Serialization.Construction
 			public SerializerInfo(object serializer)
 			{
 				Serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
-				Type serializerType = serializer.GetType();
-				SerializeMethodInfo = serializerType.GetMethod(nameof(ISerializer<Type>.Serialize));
-				DeserializeMethodInfo = serializerType.GetMethod(nameof(ISerializer<Type>.Deserialize));
-				GetBytesCountMethodInfo = serializerType.GetMethod(nameof(ISerializer<Type>.GetBytesCount));
+				SerializerType = serializer.GetType();
+				SerializeMethodInfo = SerializerType.GetMethod(nameof(ISerializer<Type>.Serialize));
+				DeserializeMethodInfo = SerializerType.GetMethod(nameof(ISerializer<Type>.Deserialize));
+				GetBytesCountMethodInfo = SerializerType.GetMethod(nameof(ISerializer<Type>.GetBytesCount));
 			}
 
 			public object Serializer { get; }
+			public Type SerializerType { get; }
 			public MethodInfo SerializeMethodInfo { get; }
 			public MethodInfo DeserializeMethodInfo { get; }
 			public MethodInfo GetBytesCountMethodInfo { get; }

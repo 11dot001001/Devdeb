@@ -24,7 +24,7 @@ namespace Devdeb.Serialization
                     return;
 
                 Configure(new SerializerConfigurations<T>(_serializeMembers));
-                _serializer = SerializerBuilder.Create(this, _serializeMembers);
+                _serializer = SerializerBuilder.Create<T>(_serializeMembers);
                 _isCreated = true;
             }
         }
