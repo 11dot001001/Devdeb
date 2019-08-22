@@ -96,7 +96,7 @@ namespace Devdeb.Serialization.Construction
 				Label notNullValue = iLGenerator.DefineLabel();
 
 				iLGenerator.Emit(OpCodes.Ldarg_0);
-				iLGenerator.Emit(OpCodes.Ldarg, i);
+				iLGenerator.Emit(OpCodes.Ldarg, i+1);
 				iLGenerator.Emit(OpCodes.Dup);
 				iLGenerator.Emit(OpCodes.Brtrue_S, notNullValue);
 				iLGenerator.Emit(OpCodes.Pop);
