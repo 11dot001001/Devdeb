@@ -56,11 +56,11 @@ namespace Devdeb.Serialization.Construction
 		{
 			Type baseSerializerType = typeof(Serializer<>).MakeGenericType(new Type[] { serializeType });
 
-			TypeBuilder typeBuilder = _moduleBuilder.DefineType(new StringBuilder(serializeType.FullName).Append(Guid.NewGuid().ToString()).ToString(), TypeAttributes.Class | TypeAttributes.Public | TypeAttributes.Sealed, serializeType);
+			TypeBuilder typeBuilder = _moduleBuilder.DefineType(new StringBuilder(serializeType.FullName).Append(Guid.NewGuid().ToString()).ToString(), TypeAttributes.Class | TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit, baseSerializerType);
 
+			MethodInfo getBytesCountMethodInfo = baseSerializerType.GetMethod(nameof(ISerializer<Type>.GetBytesCount));
 			MethodInfo serializeMethodInfo = baseSerializerType.GetMethod(nameof(ISerializer<Type>.Serialize));
 			MethodInfo deserializeMethodInfo = baseSerializerType.GetMethod(nameof(ISerializer<Type>.Deserialize));
-			MethodInfo getBytesCountMethodInfo = baseSerializerType.GetMethod(nameof(ISerializer<Type>.GetBytesCount));
 
 			foreach (SerializeMember serializeMember in serializeMembers)
 			{
@@ -93,13 +93,90 @@ namespace Devdeb.Serialization.Construction
 			iLGenerator.Emit(OpCodes.Call, baseSerializerType.GetConstructor(Type.EmptyTypes));
 			for (int i = 0; i < serializeMembers.Count; i++)
 			{
+				Label notNullValue = iLGenerator.DefineLabel();
+
+				iLGenerator.Emit(OpCodes.Ldarg_0);
 				iLGenerator.Emit(OpCodes.Ldarg, i);
 				iLGenerator.Emit(OpCodes.Dup);
+				iLGenerator.Emit(OpCodes.Brtrue_S, notNullValue);
+				iLGenerator.Emit(OpCodes.Pop);
+				iLGenerator.Emit(OpCodes.Ldstr, serializeMembers[i].Member.Name);
+				iLGenerator.Emit(OpCodes.Newobj, typeof(ArgumentNullException).GetConstructor(new Type[] { typeof(string) }));
+				iLGenerator.Emit(OpCodes.Throw);
+
+				iLGenerator.MarkLabel(notNullValue);
+				iLGenerator.Emit(OpCodes.Stfld, fieldBuilders[i]);
 			}
+			iLGenerator.Emit(OpCodes.Ret);
 
+			Type[] methodParameters = new Type[] { serializeType };
+			MethodBuilder methodBuilder = typeBuilder.DefineMethod(nameof(ISerializer<Type>.GetBytesCount), MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Final | MethodAttributes.Virtual, typeof(int), methodParameters);
+			iLGenerator = methodBuilder.GetILGenerator();
 
+			for (int i = 0; i < serializeMembers.Count; i++)
+			{
+				iLGenerator.Emit(OpCodes.Ldarg_0);
+				iLGenerator.Emit(OpCodes.Ldfld, fieldBuilders[i]);
+				iLGenerator.Emit(OpCodes.Ldarg_1);
 
-			return Activator.CreateInstance(typeBuilder.CreateTypeInfo());
+				if (serializeMembers[i].Member is FieldInfo serializeFieldInfo)
+					iLGenerator.Emit(OpCodes.Ldfld, serializeFieldInfo);
+				else if (serializeMembers[i].Member is PropertyInfo serializePropertyInfo)
+					iLGenerator.Emit(OpCodes.Callvirt, serializePropertyInfo.GetGetMethod());
+
+				iLGenerator.Emit(OpCodes.Callvirt, serializeMembers[i].Serializer.SerializerType.GetMethod(nameof(ISerializer<Type>.GetBytesCount)));
+
+				if (i != 0)
+					iLGenerator.Emit(OpCodes.Add);
+			}
+			iLGenerator.Emit(OpCodes.Ret);
+			typeBuilder.DefineMethodOverride(methodBuilder, getBytesCountMethodInfo);
+
+			methodParameters = new Type[] { serializeType, typeof(byte[]), typeof(int).MakeByRefType() };
+			methodBuilder = typeBuilder.DefineMethod(nameof(ISerializer<Type>.Serialize), MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Final | MethodAttributes.Virtual, typeof(void), methodParameters);
+			iLGenerator = methodBuilder.GetILGenerator();
+
+			for (int i = 0; i < serializeMembers.Count; i++)
+			{
+				iLGenerator.Emit(OpCodes.Ldarg_0);
+				iLGenerator.Emit(OpCodes.Ldfld, fieldBuilders[i]);
+				iLGenerator.Emit(OpCodes.Ldarg_1);
+
+				if (serializeMembers[i].Member is FieldInfo serializeFieldInfo)
+					iLGenerator.Emit(OpCodes.Ldfld, serializeFieldInfo);
+				else if (serializeMembers[i].Member is PropertyInfo serializePropertyInfo)
+					iLGenerator.Emit(OpCodes.Callvirt, serializePropertyInfo.GetGetMethod());
+
+				iLGenerator.Emit(OpCodes.Ldarg_2);
+				iLGenerator.Emit(OpCodes.Ldarg_3);
+				iLGenerator.Emit(OpCodes.Callvirt, serializeMembers[i].Serializer.SerializerType.GetMethod(nameof(ISerializer<Type>.Serialize)));
+			}
+			iLGenerator.Emit(OpCodes.Ret);
+			typeBuilder.DefineMethodOverride(methodBuilder, serializeMethodInfo);
+
+			methodParameters = new Type[] { typeof(byte[]), typeof(int).MakeByRefType() };
+			methodBuilder = typeBuilder.DefineMethod(nameof(ISerializer<Type>.Deserialize), MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Final | MethodAttributes.Virtual, serializeType, methodParameters);
+			iLGenerator = methodBuilder.GetILGenerator();
+
+			iLGenerator.Emit(OpCodes.Newobj, serializeType.GetConstructor(Type.EmptyTypes));
+			for (int i = 0; i < serializeMembers.Count; i++)
+			{
+				iLGenerator.Emit(OpCodes.Dup);
+				iLGenerator.Emit(OpCodes.Ldarg_0);
+				iLGenerator.Emit(OpCodes.Ldfld, fieldBuilders[i]);
+				iLGenerator.Emit(OpCodes.Ldarg_1);
+				iLGenerator.Emit(OpCodes.Ldarg_2);
+				iLGenerator.Emit(OpCodes.Callvirt, serializeMembers[i].Serializer.SerializerType.GetMethod(nameof(ISerializer<Type>.Deserialize)));
+
+				if (serializeMembers[i].Member is FieldInfo serializeFieldInfo)
+					iLGenerator.Emit(OpCodes.Stfld, serializeFieldInfo);
+				else if (serializeMembers[i].Member is PropertyInfo serializePropertyInfo)
+					iLGenerator.Emit(OpCodes.Callvirt, serializePropertyInfo.GetSetMethod());
+			}
+			iLGenerator.Emit(OpCodes.Ret);
+			typeBuilder.DefineMethodOverride(methodBuilder, deserializeMethodInfo);
+
+			return Activator.CreateInstance(typeBuilder.CreateTypeInfo(), serializeMembers.Select(x => x.Serializer.Serializer).ToArray());
 		}
 	}
 }

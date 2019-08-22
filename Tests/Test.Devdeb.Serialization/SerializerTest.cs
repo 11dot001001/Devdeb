@@ -14,12 +14,18 @@ namespace Test.Devdeb.Serialization
 			Player player = new Player(new PlayerData(3, 4), 5);
 			PlayerSerializer2 playerSerializer = new PlayerSerializer2();
 
+			byte[] buffer = new byte[playerSerializer.GetBytesCount(player)];
+			int writeIndex = 0;
+			playerSerializer.Serialize(player, buffer, ref writeIndex);
 
+			int readIndex = 0;
+			Player player2 = playerSerializer.Deserialize(buffer, ref readIndex);
 		}
 	}
 
 	public class PlayerData
 	{
+		public PlayerData() { }
 		public PlayerData(int login, int password)
 		{
 			Login = login;
@@ -32,6 +38,8 @@ namespace Test.Devdeb.Serialization
 	public class Player
 	{
 		public int Field;
+
+		public Player() { }
 
 		public Player(PlayerData playerData, int field)
 		{
@@ -68,7 +76,7 @@ namespace Test.Devdeb.Serialization
 		private readonly Serializer<PlayerData> _serializer1;
 		private readonly Serializer<int> _serializer2;
 
-		public PlayerSerializer2Inner(Serializer<PlayerData> serializer1, Serializer<int> serializer2)
+		public PlayerSerializer2Inner(Serializer<PlayerData> serializer1, Serializer<int> serializer2) 
 		{
 			_serializer1 = serializer1 ?? throw new ArgumentNullException(nameof(serializer1));
 			_serializer2 = serializer2 ?? throw new ArgumentNullException(nameof(serializer2));
@@ -76,7 +84,13 @@ namespace Test.Devdeb.Serialization
 
 		public sealed override int Count(Player instance) => _serializer1.Count(instance.PlayerData) + _serializer2.Count(instance.Field);
 
-		public sealed override Player Deserialize(byte[] buffer, ref int index) => new Player(_serializer1.Deserialize(buffer, ref index), _serializer2.Deserialize(buffer, ref index));
+		public sealed override Player Deserialize(byte[] buffer, ref int index)
+		{
+			Player instance = new Player();
+			instance.PlayerData = _serializer1.Deserialize(buffer, ref index);
+			instance.Field = _serializer2.Deserialize(buffer, ref index);
+			return instance;
+		}
 
 		public sealed override void Serialize(Player instance, byte[] buffer, ref int index)
 		{
