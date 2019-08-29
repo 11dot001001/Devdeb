@@ -1,5 +1,6 @@
 ﻿using Devdeb.Serialization;
 using Devdeb.Serialization.Construction;
+using Devdeb.Serialization.Converters.System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
@@ -11,8 +12,21 @@ namespace Test.Devdeb.Serialization
 		[TestMethod]
 		public void Run()
 		{
-			Player player = new Player(new PlayerData(3, 4), 5);
+			Player player = new Player(new PlayerData(3, 4, "Hello WORLD!"), 5);
 			PlayerSerializer2 playerSerializer = new PlayerSerializer2();
+
+			StringSerializer stringSerializer = new StringSerializer();
+
+			string a = "abc";
+			byte[] bytes = new byte[stringSerializer.GetBytesCount(a)];
+
+			int writeIndex1 = 0;
+			stringSerializer.Serialize(a, bytes, ref writeIndex1);
+			int readIndex1 = 0;
+			string b = stringSerializer.Deserialize(bytes, ref readIndex1);
+
+
+
 
 			byte[] buffer = new byte[playerSerializer.GetBytesCount(player)];
 			int writeIndex = 0;
@@ -26,14 +40,16 @@ namespace Test.Devdeb.Serialization
 	public class PlayerData
 	{
 		public PlayerData() { }
-		public PlayerData(int login, int password)
+		public PlayerData(int login, int password, string stringa)
 		{
 			Login = login;
 			Password = password;
+			String = stringa;
 		}
 
 		public int Login { get; set; }
 		public int Password { get; set; }
+		public string String { get; set; }
 	}
 	public class Player
 	{
@@ -60,7 +76,11 @@ namespace Test.Devdeb.Serialization
 	}
 	public class PlayerDataSerializer : CustomSerializer<PlayerData>
 	{
-		protected override void Configure(SerializerConfigurations<PlayerData> serializerSettings) => serializerSettings.AddMember(x => x.Login);
+		protected override void Configure(SerializerConfigurations<PlayerData> serializerSettings)
+		{
+			serializerSettings.AddMember(x => x.Login);
+			serializerSettings.AddMember(x => x.String);
+		}
 	}
 	public class PlayerSerializer2 : CustomSerializer<Player>
 	{
@@ -82,7 +102,7 @@ namespace Test.Devdeb.Serialization
 			_serializer2 = serializer2 ?? throw new ArgumentNullException(nameof(serializer2));
 		}
 
-		public sealed override int Count(Player instance) => _serializer1.Count(instance.PlayerData) + _serializer2.Count(instance.Field);
+		public sealed override int GetBytesCount(Player instance) => _serializer1.GetBytesCount(instance.PlayerData) + _serializer2.GetBytesCount(instance.Field);
 
 		public sealed override Player Deserialize(byte[] buffer, ref int index)
 		{

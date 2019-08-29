@@ -24,7 +24,8 @@ namespace Devdeb.Serialization.Construction
 			{
 				{ typeof(int), new IntegerSerializer() },
 				{ typeof(uint), new UIntegerSerializer() },
-				{ typeof(short), new ShortSerializer() }
+				{ typeof(short), new ShortSerializer() },
+				{typeof(string), new StringSerializer() },
 			};
 		}
 

@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Test.Devdeb.Serialization
+namespace Test.Devdeb.SerializationTest
 {
     [TestClass]
     public class SerializationTest
@@ -106,8 +106,6 @@ namespace Test.Devdeb.Serialization
         public int IntProperty { get; set; }
         public string StringProperty { get; set; }
     }
-
-
 
     public class IntegerSerializer1 : ISerializer1<int>
     {
