@@ -1,10 +1,10 @@
-﻿using Devdeb.Serialization;
+using Devdeb.Serialization;
 using Devdeb.Serialization.Construction;
 using Devdeb.Serialization.Converters.System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace Test.Devdeb.Serialization
+namespace Devdeb.Tests.Serialization
 {
 	[TestClass]
 	public class SerializerTest
@@ -16,16 +16,6 @@ namespace Test.Devdeb.Serialization
 			PlayerSerializer2 playerSerializer = new PlayerSerializer2();
 
 			StringSerializer stringSerializer = new StringSerializer();
-
-			string a = "abc";
-			byte[] bytes = new byte[stringSerializer.GetBytesCount(a)];
-
-			int writeIndex1 = 0;
-			stringSerializer.Serialize(a, bytes, ref writeIndex1);
-			int readIndex1 = 0;
-			string b = stringSerializer.Deserialize(bytes, ref readIndex1);
-
-
 
 
 			byte[] buffer = new byte[playerSerializer.GetBytesCount(player)];
@@ -96,7 +86,7 @@ namespace Test.Devdeb.Serialization
 		private readonly Serializer<PlayerData> _serializer1;
 		private readonly Serializer<int> _serializer2;
 
-		public PlayerSerializer2Inner(Serializer<PlayerData> serializer1, Serializer<int> serializer2) 
+		public PlayerSerializer2Inner(Serializer<PlayerData> serializer1, Serializer<int> serializer2)
 		{
 			_serializer1 = serializer1 ?? throw new ArgumentNullException(nameof(serializer1));
 			_serializer2 = serializer2 ?? throw new ArgumentNullException(nameof(serializer2));

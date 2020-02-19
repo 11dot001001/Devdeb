@@ -8,17 +8,17 @@ namespace Devdeb.Serialization
         static private readonly List<SerializeMember> _serializeMembers;
         static private ISerializer<T> _serializer;
         static private bool _isCreated;
-        static private readonly object _creatingKey;
+        static private readonly object _creationKey;
 
         static CustomSerializer()
         {
             _serializeMembers = new List<SerializeMember>();
-            _creatingKey = new object();
+            _creationKey = new object();
         }
 
         public CustomSerializer()
         {
-            lock (_creatingKey)
+            lock (_creationKey)
             {
                 if (_isCreated)
                     return;
