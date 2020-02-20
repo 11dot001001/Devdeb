@@ -2,6 +2,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace Devdeb.Tests.Network.Client
@@ -27,20 +28,24 @@ namespace Devdeb.Tests.Network.Client
 
 		static void RunTestClient()
 		{
-			Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			socket.Connect(new IPEndPoint(_iPAddress, _port));
-			socket.Blocking = true;
-			Console.WriteLine("Connected");
-			byte[] buffer = GetBuffer(socket.SendBufferSize, 15);
-			int count = socket.Send(buffer);
+			//Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			//socket.Connect(new IPEndPoint(_iPAddress, _port));
+			//socket.Blocking = true;
+			//Console.WriteLine("Connected");
+			string message = "Hello";
+			byte[] messageBytes = Encoding.ASCII.GetBytes(message);
+			byte[] buffer = new byte[messageBytes.Length + 4];
+			int messageLenght = messageBytes.Length;
+			for (int i = 0; i < 4; i++)
+			{
+				buffer[i] = (byte)((messageLenght >> i * 8) & byte.MaxValue);
+			}
+			for (int i = 4; i < buffer.Length; i++)
+			{
+				buffer[i] = messageBytes[i - 4];
+			}
+			//int count = socket.Send(buffer);
 		}
 
-		static byte[] GetBuffer(int size, byte elementValue)
-		{
-			byte[] buffer = new byte[size];
-			for (int i = 0; i < buffer.Length; i++)
-				buffer[i] = elementValue;
-			return buffer;
-		}
 	}
 }
