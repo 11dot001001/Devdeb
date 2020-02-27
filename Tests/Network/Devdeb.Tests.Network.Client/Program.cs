@@ -28,10 +28,10 @@ namespace Devdeb.Tests.Network.Client
 
 		static void RunTestClient()
 		{
-			//Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			//socket.Connect(new IPEndPoint(_iPAddress, _port));
-			//socket.Blocking = true;
-			//Console.WriteLine("Connected");
+			Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			socket.Connect(new IPEndPoint(_iPAddress, _port));
+			socket.Blocking = true;
+			Console.WriteLine("Connected");
 			string message = "Hello";
 			byte[] messageBytes = Encoding.ASCII.GetBytes(message);
 			byte[] buffer = new byte[messageBytes.Length + 4];
@@ -44,7 +44,7 @@ namespace Devdeb.Tests.Network.Client
 			{
 				buffer[i] = messageBytes[i - 4];
 			}
-			//int count = socket.Send(buffer);
+			int count = socket.Send(buffer);
 		}
 
 	}
