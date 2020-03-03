@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace Devdeb.Tests.Network.Server
@@ -22,8 +23,8 @@ namespace Devdeb.Tests.Network.Server
 
 		static void RunServer()
 		{
-			TCPServer tcpServer = new TCPServer(_iPAddress, _port, _backlog);
-			tcpServer.Start();
+			Server server = new Server(_iPAddress, _port, _backlog);
+			server.Start();
 		}
 
 		static void RunTestServer()
@@ -50,6 +51,17 @@ namespace Devdeb.Tests.Network.Server
 				}
 				Thread.Sleep(1);
 			}
+		}
+	}
+	public class Server : TCPServer
+	{
+		public Server(IPAddress ipAddress, int port, int backlog) : base(ipAddress, port, backlog) { }
+
+		protected override void ReceiveBytes(TCPConnection connection, byte[] bytes)
+		{
+			string recivedMessage = Encoding.UTF8.GetString(bytes);
+			Console.WriteLine($"Received message from {connection.Socket.RemoteEndPoint}: {recivedMessage}");
+			SendBytes(connection, Encoding.UTF8.GetBytes($"Server received your message: {recivedMessage}"));
 		}
 	}
 }

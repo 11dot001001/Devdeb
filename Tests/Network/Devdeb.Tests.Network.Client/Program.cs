@@ -16,14 +16,15 @@ namespace Devdeb.Tests.Network.Client
 		{
 			Console.WriteLine("Client");
 			Thread.Sleep(3000);
-			RunTestClient();
+			RunClient();
 			Console.ReadKey();
 		}
 
 		static void RunClient()
 		{
-			TCPConnectionClient tcpConnection = new TCPConnectionClient(_iPAddress, _port);
-			tcpConnection.Start();
+			Client client = new Client(_iPAddress, _port);
+			client.Start();
+			client.SendMessage("Hi bitch!");
 		}
 
 		static void RunTestClient()
@@ -46,6 +47,14 @@ namespace Devdeb.Tests.Network.Client
 			}
 			int count = socket.Send(buffer);
 		}
+	}
 
+	public class Client : TCPClient
+	{
+		public Client(IPAddress ipAddress, int port) : base(ipAddress, port) { }
+
+		public void SendMessage(string message) => SendBytes(Encoding.UTF8.GetBytes(message));
+
+		protected override void ReceiveBytes(byte[] bytes) => Console.WriteLine(Encoding.UTF8.GetString(bytes));
 	}
 }

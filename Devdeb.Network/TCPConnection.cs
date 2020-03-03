@@ -4,7 +4,7 @@ using System.Net.Sockets;
 
 namespace Devdeb.Network
 {
-	internal class TCPConnection
+	public class TCPConnection
 	{
 		private class ReceivingPackage
 		{
@@ -33,6 +33,8 @@ namespace Devdeb.Network
 			_packagesToSend = new Queue<byte[]>();
 			_receivedPackages = new Queue<ReceivingPackage>();
 		}
+
+		public Socket Socket => _connection;
 
 		internal void SendBytes()
 		{
