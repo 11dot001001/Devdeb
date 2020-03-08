@@ -3,7 +3,7 @@ using System.Drawing;
 
 namespace Devdeb.Cryptography
 {
-    public class Steganography
+	public class Steganography
     {
         public static class BlindHide
         {
