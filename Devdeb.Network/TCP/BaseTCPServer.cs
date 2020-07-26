@@ -1,7 +1,9 @@
-﻿using Devdeb.Network.TCP.Connection;
+﻿using Devdeb.Network.Connection;
+using Devdeb.Network.TCP.Connection;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 using static Devdeb.Network.TCP.Connection.TCPConnectionPackage;
 
@@ -39,12 +41,15 @@ namespace Devdeb.Network.TCP
 		{
 			_tcpSocketListener.Stop();
 			foreach (TCPConnectionProvider tcpConnectionProvider in _connections)
-				tcpConnectionProvider.Close();
+			{
+				tcpConnectionProvider.Connection.Shutdown(SocketShutdown.Both); 
+				tcpConnectionProvider.Connection.Close(); 
+			}
 			_connectionsProcessing.Abort();
 			_recivedPackagesProcessing.Abort();
 		}
 
-		protected virtual void SendBytes(TCPConnectionProvider connectionProvider, byte[] buffer) => connectionProvider.AddPackageToSend(new TCPConnectionPackage(buffer, CreatingBytesAction.CopyDataWithLenght));
+		protected virtual void SendBytes(TCPConnectionProvider connectionProvider, byte[] buffer) => connectionProvider.AddPackageToSend(new TCPConnectionPackage(ConnectionPackageType.User, buffer, CreatingBytesAction.CopyData));
 		protected abstract void ReceiveBytes(TCPConnectionProvider connectionProvider, byte[] buffer);
 
 		private void ProcessConnections()

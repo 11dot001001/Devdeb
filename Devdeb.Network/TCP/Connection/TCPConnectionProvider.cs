@@ -7,56 +7,73 @@ namespace Devdeb.Network.TCP.Connection
 {
 	public class TCPConnectionProvider : IConnectionProvider<TCPConnectionPackage>
 	{
-		private class ReceivingPackage : TCPConnectionPackage
+		private class AwaitingPackage : TCPConnectionPackage
 		{
-			public ReceivingPackage(int packageDataLenght) : base(packageDataLenght) => DataLenght = packageDataLenght;
+			public AwaitingPackage(byte[] serviceBuffer) : base(serviceBuffer) { }
+			public AwaitingPackage(ConnectionPackageType type, byte[] buffer) : base(type, buffer, CreatingBytesAction.CopyReference) { }
 
-			public int DataLenght { get; }
-			public int Offset { get; set; }
-			public int ResidualQuantity => Data.Length - Offset;
-			public bool IsAccumulated => ResidualQuantity == 0;
+			public int ServiceDataOffset { get; set; }
+			public int ServiceDataResidualQuantity => PackageServiceInfoCapacity - ServiceDataOffset;
+			public bool IsServiceDataAwaiting => ServiceDataResidualQuantity != 0;
+			public int DataOffset { get; set; }
+			public int DataResidualQuantity => DataLenght - DataOffset;
+			public bool IsDataAwaiting => DataResidualQuantity != 0;
+			public bool IsAwaiting => (ServiceDataResidualQuantity | DataResidualQuantity) != 0;
 		}
-		private class SendingPackage : TCPConnectionPackage
-		{
-			public SendingPackage(byte[] data) : base(data, CreatingBytesAction.CopyReference) { }
-
-			public int Offset { get; set; }
-			public int ResidualQuantity => Data.Length - Offset;
-			public bool IsSent => Data.Length == Offset;
-		}
-
-		public const int PackageDataCountCapacity = sizeof(int);
 
 		private readonly Socket _tcpConnection;
 		private readonly Queue<TCPConnectionPackage> _sendingPackages;
 		private readonly Queue<TCPConnectionPackage> _receivedPackages;
-		private SendingPackage _sendingPackage;
-		private ReceivingPackage _receivingPackage;
+		private readonly Queue<TCPConnectionPackage> _sendingServicePackages;
+		private readonly Queue<TCPConnectionPackage> _receivedServicePackages;
+		private AwaitingPackage _sendingPackage;
+		private AwaitingPackage _receivingPackage;
 
 		public TCPConnectionProvider(Socket tcpConnection)
 		{
 			_tcpConnection = tcpConnection ?? throw new ArgumentNullException(nameof(tcpConnection));
 			_sendingPackages = new Queue<TCPConnectionPackage>();
 			_receivedPackages = new Queue<TCPConnectionPackage>();
+			_sendingServicePackages = new Queue<TCPConnectionPackage>();
+			_receivedServicePackages = new Queue<TCPConnectionPackage>();
 		}
 
 		public Socket Connection => _tcpConnection;
 		public int SendingPackagesCount => _sendingPackages.Count;
 		public int ReceivedPackagesCount => _receivedPackages.Count;
+		public int SendingServicePackagesCount => _sendingServicePackages.Count;
+		public int ReceivedServicePackagesCount => _receivedServicePackages.Count;
 
 		public void SendBytes()
 		{
 			if (_sendingPackage == null)
 			{
-				if (SendingPackagesCount == 0)
+				TCPConnectionPackage tcpConnectionPackage = null;
+				if ((SendingServicePackagesCount | SendingPackagesCount) == 0)
 					return;
-				_sendingPackage = new SendingPackage(_sendingPackages.Dequeue().Data);
+				if(SendingServicePackagesCount != 0)
+					tcpConnectionPackage = _sendingServicePackages.Dequeue();
+				else if (SendingPackagesCount != 0)
+					tcpConnectionPackage = _sendingPackages.Dequeue();
+				_sendingPackage = new AwaitingPackage(tcpConnectionPackage.Type, tcpConnectionPackage.Data);
 			}
-			int sentBytesCount = _tcpConnection.Send(_sendingPackage.Data, _sendingPackage.Offset, _sendingPackage.ResidualQuantity, SocketFlags.None, out SocketError socketError);
+			SocketError socketError;
+			int sentBytesCount;
+			if (_sendingPackage.IsServiceDataAwaiting)
+			{
+				byte[] serviceDataBuffer = _sendingPackage.GetServiceData();
+				sentBytesCount = _tcpConnection.Send(serviceDataBuffer, _sendingPackage.ServiceDataOffset, _sendingPackage.ServiceDataResidualQuantity, SocketFlags.None, out socketError);
+				if (socketError != SocketError.Success)
+					throw new Exception($"{nameof(SocketError)} is {socketError}.");
+				_sendingPackage.ServiceDataOffset += sentBytesCount;
+				if (_sendingPackage.IsServiceDataAwaiting)
+					return;
+			}
+			sentBytesCount = _tcpConnection.Send(_sendingPackage.Data, _sendingPackage.DataOffset, _sendingPackage.DataResidualQuantity, SocketFlags.None, out socketError);
 			if (socketError != SocketError.Success)
-				throw new Exception($"{nameof(SocketError)} is {socketError}");
-			_sendingPackage.Offset += sentBytesCount;
-			if (_sendingPackage.IsSent)
+				throw new Exception($"{nameof(SocketError)} is {socketError}.");
+			_sendingPackage.DataOffset += sentBytesCount;
+			if (!_sendingPackage.IsDataAwaiting)
 				_sendingPackage = null;
 		}
 		public unsafe void ReceiveBytes()
@@ -66,24 +83,28 @@ namespace Devdeb.Network.TCP.Connection
 			SocketError socketError;
 			if (_receivingPackage == null)
 			{
-				if (_tcpConnection.Available < PackageDataCountCapacity)
+				if (_tcpConnection.Available < TCPConnectionPackage.PackageServiceInfoCapacity)
 					return;
-				byte[] packageDataLenght = new byte[PackageDataCountCapacity];
-				int receivedCount = _tcpConnection.Receive(packageDataLenght, 0, PackageDataCountCapacity, SocketFlags.None, out socketError);
+
+				byte[] serrviceBuffer = new byte[TCPConnectionPackage.PackageServiceInfoCapacity];
+				int receivedCount = _tcpConnection.Receive(serrviceBuffer, 0, TCPConnectionPackage.PackageServiceInfoCapacity, SocketFlags.None, out socketError);
 				if (socketError != SocketError.Success)
-					throw new Exception($"{nameof(SocketError)} is {socketError}");
-				if (receivedCount != PackageDataCountCapacity)
-					throw new Exception($"Recived count of package length {receivedCount} is invalid. Expected {PackageDataCountCapacity}");
-				fixed (byte* packageDataLenghtPointer = &packageDataLenght[0])
-					_receivingPackage = new ReceivingPackage(*(int*)packageDataLenghtPointer);
+					throw new Exception($"{nameof(SocketError)} is {socketError}.");
+				if (receivedCount != TCPConnectionPackage.PackageServiceInfoCapacity)
+					throw new Exception($"Recived count of package length {receivedCount} is invalid. Expected {TCPConnectionPackage.PackageServiceInfoCapacity}.");
+				_receivingPackage = new AwaitingPackage(serrviceBuffer);
 			}
-			int recivedBytesCount = _tcpConnection.Receive(_receivingPackage.Data, _receivingPackage.Offset, _receivingPackage.ResidualQuantity, SocketFlags.None, out socketError);
+
+			int recivedBytesCount = _tcpConnection.Receive(_receivingPackage.Data, _receivingPackage.DataOffset, _receivingPackage.DataResidualQuantity, SocketFlags.None, out socketError);
 			if (socketError != SocketError.Success)
 				throw new Exception($"{nameof(SocketError)} is {socketError}");
-			_receivingPackage.Offset += recivedBytesCount;
-			if (_receivingPackage.IsAccumulated)
+			_receivingPackage.DataOffset += recivedBytesCount;
+			if (!_receivingPackage.IsDataAwaiting)
 			{
-				_receivedPackages.Enqueue(_receivingPackage);
+				if (_receivingPackage.Type == ConnectionPackageType.User)
+					_receivedPackages.Enqueue(_receivingPackage);
+				else
+					_receivedServicePackages.Enqueue(_receivingPackage);
 				_receivingPackage = null;
 			}
 		}
@@ -95,11 +116,12 @@ namespace Devdeb.Network.TCP.Connection
 				throw new Exception("Connection doesn't contain received package.");
 			return _receivedPackages.Dequeue();
 		}
-	
-		public void Close()
+		public void AddServicePackageToSend(TCPConnectionPackage package) => _sendingServicePackages.Enqueue(package);
+		public TCPConnectionPackage GetServicePackage()
 		{
-			_tcpConnection.Shutdown(SocketShutdown.Both);
-			_tcpConnection.Close();
+			if (ReceivedServicePackagesCount == 0)
+				throw new Exception("Connection doesn't contain received package.");
+			return _receivedServicePackages.Dequeue();
 		}
 	}
 }

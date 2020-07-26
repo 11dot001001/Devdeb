@@ -7,27 +7,27 @@ namespace Devdeb.Network.TCP.Connection
 	{
 		public enum CreatingBytesAction
 		{
-			CopyDataWithLenght,
 			CopyData,
 			CopyReference,
 		}
 
+		public const int PackageTypeCapacity = sizeof(ConnectionPackageType);
 		public const int PackageDataCountCapacity = sizeof(int);
+		public const int PackageServiceInfoCapacity = PackageTypeCapacity + PackageDataCountCapacity;
 
-		public unsafe TCPConnectionPackage(byte[] bytes, CreatingBytesAction createBytesAction)
+		public unsafe TCPConnectionPackage(byte[] serviceBuffer)
+		{
+			Type = (ConnectionPackageType)serviceBuffer[0];
+			fixed (byte* dataLenghtPointer = &serviceBuffer[1])
+				DataLenght = *(int*)dataLenghtPointer;
+			Data = new byte[DataLenght];
+		}
+		public TCPConnectionPackage(ConnectionPackageType type, byte[] bytes, CreatingBytesAction createBytesAction)
 		{
 			if (bytes == null)
 				throw new ArgumentNullException(nameof(bytes));
 			switch (createBytesAction)
 			{
-				case CreatingBytesAction.CopyDataWithLenght:
-				{
-					Data = new byte[bytes.Length + PackageDataCountCapacity];
-					fixed (byte* dataCountPointer = &Data[0])
-						*(int*)dataCountPointer = bytes.Length;
-					Array.Copy(bytes, 0, Data, PackageDataCountCapacity, bytes.Length);
-					break;
-				}
 				case CreatingBytesAction.CopyData:
 				{
 					Data = new byte[bytes.Length];
@@ -37,14 +37,32 @@ namespace Devdeb.Network.TCP.Connection
 				case CreatingBytesAction.CopyReference:
 				{
 					Data = bytes;
+					DataLenght = bytes.Length;
 					break;
 				}
 				default:
-					break;
+					throw new ArgumentOutOfRangeException(nameof(type));
 			}
+			Type = type;
 		}
-		public unsafe TCPConnectionPackage(int packageDataLenght) => Data = new byte[packageDataLenght];
+		public TCPConnectionPackage(ConnectionPackageType type, int packageDataLenght)
+		{
+			Type = type;
+			DataLenght = packageDataLenght;
+			Data = new byte[packageDataLenght];
+		}
 
+		public ConnectionPackageType Type { get; }
+		public int DataLenght { get; }
 		public byte[] Data { get; }
+
+		public unsafe byte[] GetServiceData()
+		{
+			byte[] serviceBuffer = new byte[PackageServiceInfoCapacity];
+			serviceBuffer[0] = (byte)Type;
+			fixed (byte* dataLenghtPointer = &serviceBuffer[1])
+				*(int*)dataLenghtPointer = DataLenght;
+			return serviceBuffer;
+		}
 	}
 }

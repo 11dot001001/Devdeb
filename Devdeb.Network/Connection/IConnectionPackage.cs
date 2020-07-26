@@ -2,6 +2,8 @@
 {
 	public interface IConnectionPackage
 	{
+		ConnectionPackageType Type { get; }
+		int DataLenght { get; }
 		byte[] Data { get; }
 	}
 }
