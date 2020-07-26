@@ -1,4 +1,4 @@
-﻿using Devdeb.Network;
+﻿using Devdeb.Network.TCP;
 using System;
 using System.Net;
 using System.Net.Sockets;
@@ -49,12 +49,12 @@ namespace Devdeb.Tests.Network.Client
 		}
 	}
 
-	public class Client : TCPClient
+	public class Client : BaseTCPClient
 	{
 		public Client(IPAddress ipAddress, int port) : base(ipAddress, port) { }
 
 		public void SendMessage(string message) => SendBytes(Encoding.UTF8.GetBytes(message));
-
+		
 		protected override void ReceiveBytes(byte[] bytes) => Console.WriteLine(Encoding.UTF8.GetString(bytes));
 	}
 }

@@ -1,4 +1,6 @@
 ﻿using Devdeb.Network;
+using Devdeb.Network.TCP;
+using Devdeb.Network.TCP.Connection;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -53,15 +55,15 @@ namespace Devdeb.Tests.Network.Server
 			}
 		}
 	}
-	public class Server : TCPServer
+	public class Server : BaseTCPServer
 	{
 		public Server(IPAddress ipAddress, int port, int backlog) : base(ipAddress, port, backlog) { }
 
-		protected override void ReceiveBytes(TCPConnection connection, byte[] bytes)
+		protected override void ReceiveBytes(TCPConnectionProvider connectionProvider, byte[] buffer)
 		{
-			string recivedMessage = Encoding.UTF8.GetString(bytes);
-			Console.WriteLine($"Received message from {connection.Socket.RemoteEndPoint}: {recivedMessage}");
-			SendBytes(connection, Encoding.UTF8.GetBytes($"Server received your message: {recivedMessage}"));
+			string recivedMessage = Encoding.UTF8.GetString(buffer);
+			Console.WriteLine($"Received message from {connectionProvider.Connection.RemoteEndPoint}: {recivedMessage}");
+			SendBytes(connectionProvider, Encoding.UTF8.GetBytes($"Server received your message: {recivedMessage}"));
 		}
 	}
 }
