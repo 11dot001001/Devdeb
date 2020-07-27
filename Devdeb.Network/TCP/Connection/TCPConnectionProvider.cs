@@ -18,7 +18,6 @@ namespace Devdeb.Network.TCP.Connection
 			public int DataOffset { get; set; }
 			public int DataResidualQuantity => DataLenght - DataOffset;
 			public bool IsDataAwaiting => DataResidualQuantity != 0;
-			public bool IsAwaiting => (ServiceDataResidualQuantity | DataResidualQuantity) != 0;
 		}
 
 		private readonly Socket _tcpConnection;
@@ -43,6 +42,7 @@ namespace Devdeb.Network.TCP.Connection
 		public int ReceivedPackagesCount => _receivedPackages.Count;
 		public int SendingServicePackagesCount => _sendingServicePackages.Count;
 		public int ReceivedServicePackagesCount => _receivedServicePackages.Count;
+		public bool HasReceivedPackages => (ReceivedPackagesCount | ReceivedServicePackagesCount) != 0;
 
 		public void SendBytes()
 		{
@@ -109,14 +109,26 @@ namespace Devdeb.Network.TCP.Connection
 			}
 		}
 
-		public void AddPackageToSend(TCPConnectionPackage package) => _sendingPackages.Enqueue(package);
+		public void AddPackageToSend(TCPConnectionPackage package)
+		{
+			switch (package.Type)
+			{
+				case ConnectionPackageType.Service:
+					_sendingPackages.Enqueue(package);
+					break;
+				case ConnectionPackageType.User:
+					_sendingServicePackages.Enqueue(package);
+					break;
+				default:
+					throw new ArgumentOutOfRangeException(nameof(package.Type));
+			}
+		}
 		public TCPConnectionPackage GetPackage()
 		{
 			if (ReceivedPackagesCount == 0)
 				throw new Exception("Connection doesn't contain received package.");
 			return _receivedPackages.Dequeue();
 		}
-		public void AddServicePackageToSend(TCPConnectionPackage package) => _sendingServicePackages.Enqueue(package);
 		public TCPConnectionPackage GetServicePackage()
 		{
 			if (ReceivedServicePackagesCount == 0)

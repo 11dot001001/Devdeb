@@ -49,16 +49,10 @@ namespace Devdeb.Network.TCP
 			{
 				_tcpConnectionProvider.SendBytes();
 				_tcpConnectionProvider.ReceiveBytes();
-				if(_tcpConnectionProvider.ReceivedServicePackagesCount != 0)
-				{
-					TCPConnectionPackage package = _tcpConnectionProvider.GetServicePackage();
-					HandleServicePackage(package);
-				}
+				for (; _tcpConnectionProvider.ReceivedServicePackagesCount != 0;)
+					HandleServicePackage(_tcpConnectionProvider.GetServicePackage());
 				if (_tcpConnectionProvider.ReceivedPackagesCount != 0)
-				{ 
-					TCPConnectionPackage package = _tcpConnectionProvider.GetPackage();
-					ReceiveBytes(package.Data);
-				}
+					ReceiveBytes(_tcpConnectionProvider.GetPackage().Data);
 				Thread.Sleep(1);
 			}
 		}

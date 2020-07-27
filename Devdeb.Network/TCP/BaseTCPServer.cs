@@ -1,5 +1,6 @@
 ﻿using Devdeb.Network.Connection;
 using Devdeb.Network.TCP.Connection;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -52,6 +53,7 @@ namespace Devdeb.Network.TCP
 		protected virtual void SendBytes(TCPConnectionProvider connectionProvider, byte[] buffer) => connectionProvider.AddPackageToSend(new TCPConnectionPackage(ConnectionPackageType.User, buffer, CreatingBytesAction.CopyData));
 		protected abstract void ReceiveBytes(TCPConnectionProvider connectionProvider, byte[] buffer);
 
+		private void HandleServicePackage(TCPConnectionProvider tcpConnectionProvider, TCPConnectionPackage package) => throw new NotImplementedException();
 		private void ProcessConnections()
 		{
 			for (; ; )
@@ -65,10 +67,10 @@ namespace Devdeb.Network.TCP
 					continue;
 				}
 				TCPConnectionProvider connectionProvider = _connections.Dequeue();
-				bool inPackagesProcesing = connectionProvider.ReceivedPackagesCount != 0;
+				bool inPackagesProcesing = connectionProvider.HasReceivedPackages;
 				connectionProvider.SendBytes();
 				connectionProvider.ReceiveBytes();
-				if (connectionProvider.ReceivedPackagesCount != 0 && !inPackagesProcesing)
+				if (connectionProvider.HasReceivedPackages && !inPackagesProcesing)
 					_connectionsWithPackages.Enqueue(connectionProvider);
 				_connections.Enqueue(connectionProvider);
 			}
@@ -83,11 +85,13 @@ namespace Devdeb.Network.TCP
 					continue;
 				}
 				TCPConnectionProvider tcpConnectionProvider = _connectionsWithPackages.Dequeue();
-				if (tcpConnectionProvider.ReceivedPackagesCount == 0)
+				if (!tcpConnectionProvider.HasReceivedPackages)
 					continue;
-				TCPConnectionPackage package = tcpConnectionProvider.GetPackage();
-				ReceiveBytes(tcpConnectionProvider, package.Data);
-				if (tcpConnectionProvider.ReceivedPackagesCount == 0)
+				for (; tcpConnectionProvider.ReceivedServicePackagesCount != 0; )
+					HandleServicePackage(tcpConnectionProvider, tcpConnectionProvider.GetServicePackage());
+				if (tcpConnectionProvider.ReceivedPackagesCount != 0)
+					ReceiveBytes(tcpConnectionProvider, tcpConnectionProvider.GetPackage().Data);
+				if (tcpConnectionProvider.HasReceivedPackages)
 					continue;
 				_connectionsWithPackages.Enqueue(tcpConnectionProvider);
 			}
