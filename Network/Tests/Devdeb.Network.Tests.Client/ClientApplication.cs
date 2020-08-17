@@ -5,9 +5,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace Devdeb.Tests.Network.Client
+namespace Devdeb.Network.Tests.Client
 {
-	class Program
+	class ClientApplication
 	{
 		static private readonly IPAddress _iPAddress = IPAddress.Parse("127.0.0.1");
 		static private readonly int _port = 25000;
@@ -54,7 +54,7 @@ namespace Devdeb.Tests.Network.Client
 		public Client(IPAddress ipAddress, int port) : base(ipAddress, port) { }
 
 		public void SendMessage(string message) => SendBytes(Encoding.UTF8.GetBytes(message));
-		
+
 		protected override void ReceiveBytes(byte[] bytes) => Console.WriteLine(Encoding.UTF8.GetString(bytes));
 	}
 }

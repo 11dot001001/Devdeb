@@ -7,8 +7,8 @@ using System.Text;
 
 namespace Devdeb.Tests.Serialization
 {
-	class UnitTest1
-	{
+    class UnitTest1
+    {
         [TestClass]
         public class SerializationTest
         {
