@@ -1,4 +1,6 @@
-﻿namespace Devdeb.Serialization.Converters.System
+﻿using System;
+
+namespace Devdeb.Serialization.Converters.System
 {
 	public sealed class IntegerSerializer : ConstantSerializer<int>
 	{
