@@ -9,9 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Network", "Network\D
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{340A90B1-69F8-402C-870E-D79CB6A005FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Network.Tests.Client", "Network\Tests\Devdeb.Network.Tests.Client\Devdeb.Network.Tests.Client.csproj", "{E55F00FC-BF4E-4CA9-A2A3-231DE1BA0BB0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Network.Tests.Client", "Network\Tests\Devdeb.Network.Tests.Client\Devdeb.Network.Tests.Client.csproj", "{E55F00FC-BF4E-4CA9-A2A3-231DE1BA0BB0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Network.Tests.Server", "Network\Tests\Devdeb.Network.Tests.Server\Devdeb.Network.Tests.Server.csproj", "{073D345D-DD68-4A44-8DAA-3E533321F7FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Network.Tests.Server", "Network\Tests\Devdeb.Network.Tests.Server\Devdeb.Network.Tests.Server.csproj", "{073D345D-DD68-4A44-8DAA-3E533321F7FF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Cryptography", "Cryptography", "{2685B54E-7DA5-4454-A04A-42926FD1490E}"
 EndProject
@@ -37,13 +37,21 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.WPF", "WPF\Devdeb.WP
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Math", "Math", "{39432E08-62B1-45F5-AEE1-511E3AC93DEB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Math", "Math\Devdeb.Math\Devdeb.Math.csproj", "{E126F68C-F9B0-4E31-8065-507BD45992DE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Math", "Math\Devdeb.Math\Devdeb.Math.csproj", "{E126F68C-F9B0-4E31-8065-507BD45992DE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Cryptography.Tests", "Cryptography\Tests\Devdeb.Cryptography.Tests\Devdeb.Cryptography.Tests.csproj", "{764EB11E-166E-4FF9-AD22-F72BCAA2C797}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Cryptography.Tests", "Cryptography\Tests\Devdeb.Cryptography.Tests\Devdeb.Cryptography.Tests.csproj", "{764EB11E-166E-4FF9-AD22-F72BCAA2C797}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Serialization.Tests", "Serialization\Tests\Devdeb.Serialization.Tests\Devdeb.Serialization.Tests.csproj", "{5504813C-1FF0-4B98-9A43-7ACCE44AA511}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Serialization.Tests", "Serialization\Tests\Devdeb.Serialization.Tests\Devdeb.Serialization.Tests.csproj", "{5504813C-1FF0-4B98-9A43-7ACCE44AA511}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Sets.Tests", "Sets\Tests\Devdeb.Sets.Tests\Devdeb.Sets.Tests.csproj", "{51483971-900F-4019-BBEF-F2886A90643B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Sets.Tests", "Sets\Tests\Devdeb.Sets.Tests\Devdeb.Sets.Tests.csproj", "{51483971-900F-4019-BBEF-F2886A90643B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Storage", "Storage", "{F2BEEFC9-C1F2-4CCC-B201-4512A121898A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Storage", "Storage\Devdeb.Storage\Devdeb.Storage.csproj", "{B61A6B14-FC41-49D7-B9E4-CE564B660A81}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{19AAF9A5-72D4-4291-9B4D-223ED56E079C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Storage.Test", "Storage\Tests\Devdeb.Storage.Test\Devdeb.Storage.Test.csproj", "{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -279,6 +287,46 @@ Global
 		{51483971-900F-4019-BBEF-F2886A90643B}.Release|x64.Build.0 = Release|Any CPU
 		{51483971-900F-4019-BBEF-F2886A90643B}.Release|x86.ActiveCfg = Release|Any CPU
 		{51483971-900F-4019-BBEF-F2886A90643B}.Release|x86.Build.0 = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|ARM.Build.0 = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|x64.Build.0 = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Debug|x86.Build.0 = Debug|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|ARM.ActiveCfg = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|ARM.Build.0 = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|ARM64.Build.0 = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|x64.ActiveCfg = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|x64.Build.0 = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|x86.ActiveCfg = Release|Any CPU
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81}.Release|x86.Build.0 = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|ARM.Build.0 = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|x64.Build.0 = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Debug|x86.Build.0 = Debug|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|ARM.ActiveCfg = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|ARM.Build.0 = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|ARM64.Build.0 = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|x64.ActiveCfg = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|x64.Build.0 = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|x86.ActiveCfg = Release|Any CPU
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -299,6 +347,9 @@ Global
 		{764EB11E-166E-4FF9-AD22-F72BCAA2C797} = {8253B5A1-67A9-440E-ACFA-19972643F8FB}
 		{5504813C-1FF0-4B98-9A43-7ACCE44AA511} = {CE52B616-65FF-4485-84A8-B6A2D7158802}
 		{51483971-900F-4019-BBEF-F2886A90643B} = {C0BA5CCD-E0FC-49CD-8DCC-B61D92A712AA}
+		{B61A6B14-FC41-49D7-B9E4-CE564B660A81} = {F2BEEFC9-C1F2-4CCC-B201-4512A121898A}
+		{19AAF9A5-72D4-4291-9B4D-223ED56E079C} = {F2BEEFC9-C1F2-4CCC-B201-4512A121898A}
+		{B5AC4F8C-02EC-4D54-B288-40E9BF8BF73C} = {19AAF9A5-72D4-4291-9B4D-223ED56E079C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E12EEAF3-BD7A-4629-8CC8-2DF20FE2C73A}
