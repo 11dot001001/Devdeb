@@ -10,9 +10,30 @@ namespace Devdeb.Storage.Test
 
 		static void Main(string[] args)
 		{
-			BinaryTree<int> binaryTree = new BinaryTree<int>(20, new IntComparator(int.MinValue));
-			binaryTree.Add(1);
+			BinaryTree<Class> binaryTree = new BinaryTree<Class>(1, new ClassComparator());
 
+			for (int i = 0; i < 1000; i++)
+			{
+				binaryTree.Add(new Class());
+			}
+			Class searchClass = new Class();
+			binaryTree.Add(searchClass);
+			for (int i = 0; i < 1000; i++)
+			{
+				binaryTree.Add(new Class());
+			}
+			Class result = binaryTree.Search(new Class { Id = searchClass.Id });
+		}
+
+		static void TestBinaryTree()
+		{
+			BinaryTree<int> binaryTree = new BinaryTree<int>(1, new IntComparator(int.MinValue));
+			binaryTree.Add(5);
+		}
+
+
+		static void TestStorableHeap()
+		{
 			StorableHeap storableHeap = new StorableHeap(new DirectoryInfo(DatabaseDirectory), MaxHeapSize);
 			Segment segment = storableHeap.AllocateMemory(10);
 			Segment segment1 = storableHeap.AllocateMemory(10);
@@ -46,18 +67,37 @@ namespace Devdeb.Storage.Test
 		}
 	}
 
-	public enum ComparisonResult
+	public class Class
 	{
-		Equal = 1,
-		More = 2,
-		Less = 3,
+		static private Random _random = new Random();
+
+		public Guid Id { get; set; } = Guid.NewGuid();
+		public int IntValue { get; } = _random.Next(int.MinValue, int.MaxValue);
 	}
-	
-	public interface IBinaryTreeComparator<T>
+	public class ClassComparator : IBinaryTreeComparator<Class>
 	{
-		ComparisonResult Compare(T value1, T value2);
-		bool IsNull(T value);
+		public Class NullValue => null;
+
+		public ComparisonResult Compare(Class value1, Class value2)
+		{
+			if (IsNull(value1))
+				throw new ArgumentNullException(nameof(value1));
+			if (IsNull(value2))
+				throw new ArgumentNullException(nameof(value2));
+
+			int comparisonResult = value1.Id.CompareTo(value2.Id);
+			if (comparisonResult == 0)
+				return ComparisonResult.Equal;
+			else if (comparisonResult > 0)
+				return ComparisonResult.More;
+			else if (comparisonResult < 0)
+				return ComparisonResult.Less;
+			throw new Exception();
+		}
+
+		public bool IsNull(Class value) => value == NullValue;
 	}
+
 
 	public class IntComparator : IBinaryTreeComparator<int>
 	{
@@ -65,12 +105,14 @@ namespace Devdeb.Storage.Test
 
 		public IntComparator(int nullValue) => _nullValue = nullValue;
 
+		public int NullValue => _nullValue;
+
 		public ComparisonResult Compare(int value1, int value2)
 		{
 			int comparisonResult = value1.CompareTo(value2);
 			if (comparisonResult == 0)
 				return ComparisonResult.Equal;
-			else if(comparisonResult > 0)
+			else if (comparisonResult > 0)
 				return ComparisonResult.More;
 			else if (comparisonResult < 0)
 				return ComparisonResult.Less;
@@ -80,6 +122,19 @@ namespace Devdeb.Storage.Test
 		public bool IsNull(int value) => _nullValue == value;
 	}
 
+
+	public enum ComparisonResult
+	{
+		Equal = 1,
+		More = 2,
+		Less = 3,
+	}
+	public interface IBinaryTreeComparator<T>
+	{
+		ComparisonResult Compare(T value1, T value2);
+		bool IsNull(T value);
+		T NullValue { get; }
+	}
 	public class BinaryTree<T>
 	{
 		public const int MaxLevel = 30;
@@ -87,6 +142,7 @@ namespace Devdeb.Storage.Test
 
 		private T[] _elements;
 		private readonly IBinaryTreeComparator<T> _comparator;
+		private readonly Random _random;
 
 		public BinaryTree(int levels, IBinaryTreeComparator<T> comparator)
 		{
@@ -97,6 +153,8 @@ namespace Devdeb.Storage.Test
 
 			_elements = new T[1 << levels];
 			_comparator = comparator;
+			_random = new Random();
+			FillNullValues(_elements, 0, _elements.Length);
 		}
 
 		public int Level
@@ -111,12 +169,46 @@ namespace Devdeb.Storage.Test
 
 		public void Add(T element)
 		{
+			if (_comparator.IsNull(element))
+				throw new ArgumentNullException(nameof(element));
 
+			int index = 0;
+			for (; !_comparator.IsNull(_elements[index]);)
+			{
+				ComparisonResult direction = _comparator.Compare(element, _elements[index]);
+
+				if (direction == ComparisonResult.Equal)
+					direction = _random.Next(0, 2) == 1 ? ComparisonResult.Less : ComparisonResult.More;
+
+				if (direction == ComparisonResult.Less)
+					index = (index << 1) + 1;
+				else if (direction == ComparisonResult.More)
+					index = (index << 1) + 2;
+
+				if (index >= _elements.Length - 1)
+					AddTreeLevel();
+			}
+			_elements[index] = element;
 		}
 
 		public T Search(T element)
 		{
-			return default;
+			if (_comparator.IsNull(element))
+				throw new ArgumentNullException(nameof(element));
+
+			int index = 0;
+			ComparisonResult direction;
+			for (; (direction = _comparator.Compare(element, _elements[index])) != ComparisonResult.Equal;)
+			{
+				if (direction == ComparisonResult.Less)
+					index = (index << 1) + 1;
+				else if (direction == ComparisonResult.More)
+					index = (index << 1) + 2;
+
+				if (index >= _elements.Length - 1)
+					return _comparator.NullValue;
+			}
+			return _elements[index];
 		}
 
 		private void AddTreeLevel()
@@ -125,7 +217,13 @@ namespace Devdeb.Storage.Test
 				throw new Exception("The maximum tree level was reached.");
 			T[] newElements = new T[1 << Level + 1];
 			Array.Copy(_elements, 0, newElements, 0, _elements.Length);
+			FillNullValues(newElements, _elements.Length, newElements.Length - _elements.Length);
 			_elements = newElements;
+		}
+		private void FillNullValues(T[] elements, int offset, int count)
+		{
+			for (int i = 0; i != count; i++)
+				elements[i + offset] = _comparator.NullValue;
 		}
 	}
 }
