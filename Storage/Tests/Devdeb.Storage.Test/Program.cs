@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Devdeb.Sets.Generic;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace Devdeb.Storage.Test
@@ -8,7 +11,42 @@ namespace Devdeb.Storage.Test
 		public const string DatabaseDirectory = @"C:\Users\lehac\Desktop\data";
 		public const long MaxHeapSize = 10000;
 
+		public const int ByteSize = 0X7FFFFFC7;
+		public const int MoreByteSize = 0X7FEFFFFF;
+
 		static void Main(string[] args)
+		{
+			Dictionary<int, ClassB> keys = new Dictionary<int, ClassB>();
+			SortedDictionary<int, ClassB> sortedDick = new SortedDictionary<int, ClassB>();
+			//sortedDick.TryGetValue
+			//Test2();
+			Test1();
+		}
+		static void Test2()
+		{
+			RedBlackTreeSurjection<int, ClassB> surjection = new RedBlackTreeSurjection<int, ClassB>(Comparer<int>.Default);
+			ClassB b1 = new ClassB { Id = 2 };
+			ClassB b2 = new ClassB { Id = 3 };
+			surjection.TryAdd(b1.Id, b1);
+			surjection.TryAdd(b2.Id, b2);
+			var res = surjection.Remove(b2.Id);
+		}
+
+		static void Test1()
+		{
+			RedBlackTreeSurjection<Guid, Class> surjection = new RedBlackTreeSurjection<Guid, Class>(Comparer<Guid>.Default);
+			bool isDelete = false;
+			for (int i = 0; i < 100000; i++)
+			{
+				Class temp = new Class();
+				surjection.TryAdd(temp.Id, temp);
+				if (isDelete)
+					Debug.Assert(surjection.Remove(temp.Id));
+				isDelete = !isDelete;
+			}
+		}
+
+		static void TestBinaryTree()
 		{
 			BinaryTree<Class> binaryTree = new BinaryTree<Class>(1, new ClassComparator());
 
@@ -23,12 +61,6 @@ namespace Devdeb.Storage.Test
 				binaryTree.Add(new Class());
 			}
 			Class result = binaryTree.Search(new Class { Id = searchClass.Id });
-		}
-
-		static void TestBinaryTree()
-		{
-			BinaryTree<int> binaryTree = new BinaryTree<int>(1, new IntComparator(int.MinValue));
-			binaryTree.Add(5);
 		}
 
 
@@ -67,6 +99,13 @@ namespace Devdeb.Storage.Test
 		}
 	}
 
+	public class ClassB
+	{
+		static private Random _random = new Random();
+
+		public int Id { get; set; }
+		public int IntValue { get; } = _random.Next(int.MinValue, int.MaxValue);
+	}
 	public class Class
 	{
 		static private Random _random = new Random();
@@ -166,6 +205,27 @@ namespace Devdeb.Storage.Test
 				return level;
 			}
 		}
+		public double LogLevel
+		{
+			get
+			{
+				return Math.Round(Math.Log(_elements.Length - 1, 2));
+			}
+		}
+		private int NullElementsCount
+		{
+			get
+			{
+				int count = 0;
+				for (int i = 0; i < _elements.Length; i++)
+				{
+					if (_comparator.IsNull(_elements[i]))
+						count++;
+				}
+				return count;
+			}
+		}
+		private int FilledElementsCount => _elements.Length - 1 - NullElementsCount;
 
 		public void Add(T element)
 		{
