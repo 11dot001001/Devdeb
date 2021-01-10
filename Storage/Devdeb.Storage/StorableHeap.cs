@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Devdeb.Sets.Generic;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace Devdeb.Storage
@@ -10,7 +12,8 @@ namespace Devdeb.Storage
 		private const string HeapFileName = "_data";
 
 		private readonly List<Segment> _usedSegments;
-		private readonly List<Segment> _freeSegments;
+		private readonly RedBlackTreeSurjection<long, Segment> _freeSegmentsPointers;
+		private readonly RedBlackTreeSurjection<long, Queue<Segment>> _freeSegmentsSizes;
 		private readonly long _maxHeapSize;
 		private long _currentHeapSize;
 		private readonly object _currentHeapSizeLock;
@@ -30,14 +33,17 @@ namespace Devdeb.Storage
 			_currentHeapSize = DefaultInitializedHeapSize;
 			_currentHeapSizeLock = new object();
 			_usedSegments = new List<Segment>();
-			_freeSegments = new List<Segment>
+
+			Segment segment = new Segment
 			{
-				new Segment
-				{
-					Pointer = 0,
-					Size = _currentHeapSize
-				}
+				Pointer = 0,
+				Size = _currentHeapSize
 			};
+			_freeSegmentsPointers = new RedBlackTreeSurjection<long, Segment>();
+			_freeSegmentsSizes = new RedBlackTreeSurjection<long, Queue<Segment>>();
+			_freeSegmentsPointers.Add(segment.Pointer, segment);
+			_freeSegmentsSizes.Add(segment.Size, new Queue<Segment>(new Segment[] { segment }));
+
 			using FileStream fileStream = File.Open(FilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
 			fileStream.Seek(_currentHeapSize + 1, SeekOrigin.Begin);
 			fileStream.WriteByte(0);
@@ -50,34 +56,38 @@ namespace Devdeb.Storage
 				throw new ArgumentOutOfRangeException(nameof(size));
 
 			Segment segment = default;
-			lock (_freeSegments)
+			if (_freeSegmentsSizes.TryGetMin(size, out Queue<Segment> segments))
 			{
-				for (int i = 0; i != _freeSegments.Count; i++)
+				Segment freeSegment = segments.Dequeue();
+				Debug.Assert(_freeSegmentsPointers.Remove(freeSegment.Pointer));
+				if (segments.Count == 0)
+					Debug.Assert(_freeSegmentsSizes.Remove(freeSegment.Size));
+
+				if (freeSegment.Size == size)
 				{
-					Segment freeSegment = _freeSegments[i];
-					if (freeSegment.Size < size)
-						continue;
-
-					if (freeSegment.Size == size)
-					{
-						segment = freeSegment;
-						_freeSegments.RemoveAt(i);
-						break;
-					}
-
-					segment = new Segment
-					{
-						Pointer = freeSegment.Pointer,
-						Size = size
-					};
-
-					freeSegment.Pointer += size;
-					freeSegment.Size -= size;
-					_freeSegments[i] = freeSegment;
-					break;
+					segment = freeSegment;
+					_usedSegments.Add(segment);
+					return segment;
 				}
+
+				segment = new Segment
+				{
+					Pointer = freeSegment.Pointer,
+					Size = size
+				};
+
+				freeSegment.Pointer += size;
+				freeSegment.Size -= size;
+				_freeSegmentsPointers.Add(freeSegment.Pointer, freeSegment);
+				if (_freeSegmentsSizes.TryGetValue(freeSegment.Size, out segments))
+					segments.Enqueue(freeSegment);
+				else
+					_freeSegmentsSizes.Add(freeSegment.Size, new Queue<Segment>(new Segment[] { freeSegment }));
+
+				_usedSegments.Add(segment);
+				return segment;
 			}
-			if (segment.Size == 0)
+			else
 			{
 				//add defragmentation
 
@@ -94,20 +104,23 @@ namespace Devdeb.Storage
 					_currentHeapSize += size;
 
 					using FileStream fileStream = File.Open(FilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
-					fileStream.Seek(_currentHeapSize + 1, SeekOrigin.Begin);
+					_ = fileStream.Seek(_currentHeapSize + 1, SeekOrigin.Begin);
 					fileStream.WriteByte(0);
 					fileStream.Flush();
 				}
+				_usedSegments.Add(segment);
+				return segment;
 			}
-
-			_usedSegments.Add(segment);
-			return segment;
 		}
 		public void FreeMemory(Segment segment)
 		{
 			if (!_usedSegments.Remove(segment))
 				throw new Exception($"The {nameof(segment)} was removed.");
-			_freeSegments.Add(segment);
+			_freeSegmentsPointers.Add(segment.Pointer, segment);
+			if (_freeSegmentsSizes.TryGetValue(segment.Size, out Queue<Segment> segments))
+				segments.Enqueue(segment);
+			else
+				_freeSegmentsSizes.Add(segment.Size, new Queue<Segment>(new Segment[] { segment }));
 		}
 		public void Defragment()
 		{
@@ -129,7 +142,6 @@ namespace Devdeb.Storage
 				if (readCount != segmentData.Length)
 					throw new Exception($"The number of bytes read from the file does not match the segment size.");
 
-
 				_ = fileStream.Seek(offset, SeekOrigin.Begin);
 				fileStream.Write(segmentData, 0, segmentData.Length);
 				fileStream.Flush();
@@ -138,12 +150,15 @@ namespace Devdeb.Storage
 				_usedSegments[i] = segment;
 				offset += segment.Size;
 			}
-			_freeSegments.Clear();
-			_freeSegments.Add(new Segment
+			_freeSegmentsPointers.Clear();
+			_freeSegmentsSizes.Clear();
+			Segment remainedSegment = new Segment
 			{
 				Pointer = offset,
 				Size = _currentHeapSize - offset
-			});
+			};
+			_freeSegmentsPointers.Add(remainedSegment.Pointer, remainedSegment);
+			_freeSegmentsSizes.Add(remainedSegment.Size, new Queue<Segment>(new Segment[] { remainedSegment }));
 		}
 
 		public void Write(Segment segment, byte[] buffer, int offset, int count)

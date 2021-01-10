@@ -50,13 +50,15 @@ namespace Devdeb.Sets.Generic
 		private int _usedSlotsCount;
 		private int _count;
 
-		public RedBlackTreeSurjection(IComparer<TInput> inputComparer, int capacity = DefaultCapacity)
+		public RedBlackTreeSurjection(IComparer<TInput> inputComparer = null, int capacity = DefaultCapacity)
 		{
 			_inputComparer = inputComparer ?? Comparer<TInput>.Default;
 			_slots = new Slot[capacity];
 			_rootIndex = -1;
 			_freeListIndex = -1;
 		}
+
+		public int Count => _count;
 
 		public void Add(TInput input, TOutput output)
 		{
@@ -322,6 +324,30 @@ namespace Devdeb.Sets.Generic
 					return true;
 				}
 				current = order < 0 ? _slots[current].Left : _slots[current].Right;
+			}
+			output = default;
+			return false;
+		}
+		public bool TryGetMin(TInput includedLowerBound, out TOutput output)
+		{
+			int current = _rootIndex;
+			int foundMin = -1;
+			for (; current != -1;)
+			{
+				int order = _inputComparer.Compare(includedLowerBound, _slots[current].Input);
+				if (order == 0)
+				{
+					output = _slots[current].Output;
+					return true;
+				}
+				if (order < 0)
+					foundMin = current;
+				current = order < 0 ? _slots[current].Left : _slots[current].Right;
+			}
+			if(foundMin != -1)
+			{
+				output = _slots[foundMin].Output;
+				return true;
 			}
 			output = default;
 			return false;

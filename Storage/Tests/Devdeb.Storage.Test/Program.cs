@@ -16,6 +16,7 @@ namespace Devdeb.Storage.Test
 
 		static void Main(string[] args)
 		{
+			TestStorableHeap();
 			Dictionary<int, ClassB> keys = new Dictionary<int, ClassB>();
 			SortedDictionary<int, ClassB> sortedDick = new SortedDictionary<int, ClassB>();
 			//sortedDick.TryGetValue
@@ -35,14 +36,12 @@ namespace Devdeb.Storage.Test
 		static void Test1()
 		{
 			RedBlackTreeSurjection<Guid, Class> surjection = new RedBlackTreeSurjection<Guid, Class>(Comparer<Guid>.Default);
-			bool isDelete = false;
-			for (int i = 0; i < 100000; i++)
+			for (int i = 0; i < 10000000; i++)
 			{
 				Class temp = new Class();
 				surjection.TryAdd(temp.Id, temp);
-				if (isDelete)
+				if (i%3 ==0)
 					Debug.Assert(surjection.Remove(temp.Id));
-				isDelete = !isDelete;
 			}
 		}
 
