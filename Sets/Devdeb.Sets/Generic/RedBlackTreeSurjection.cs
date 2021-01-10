@@ -1,11 +1,14 @@
 ﻿using Devdeb.Sets.Extensions;
+using Devdeb.Sets.Ratios;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Devdeb.Sets.Generic
 {
-	public class RedBlackTreeSurjection<TInput, TOutput>
+	public class RedBlackTreeSurjection<TInput, TOutput> : IEnumerable<SurjectionRatio<TInput, TOutput>>
+		where TInput : IEquatable<TInput>
 	{
 		private struct Slot
 		{
@@ -39,6 +42,78 @@ namespace Devdeb.Sets.Generic
 			LeftRight = 1,
 			RightLeft = 2,
 			Left = 3,
+		}
+		public struct Enumerator : IEnumerator<SurjectionRatio<TInput, TOutput>>
+		{
+			private readonly RedBlackTreeSurjection<TInput, TOutput> _surjection;
+			private readonly Stack<int> _stack;
+			private int _current;
+
+			internal Enumerator(RedBlackTreeSurjection<TInput, TOutput> surjection)
+			{
+				_surjection = surjection ?? throw new ArgumentNullException(nameof(surjection));
+				_stack = new Stack<int>();
+				_current = default;
+				Initialize();
+			}
+
+			public SurjectionRatio<TInput, TOutput> Current
+			{
+				get
+				{
+					if (_current == -1)
+						return default;
+					Slot slot = _surjection._slots[_current];
+					return new SurjectionRatio<TInput, TOutput>(slot.Input, slot.Output);
+				}
+			}
+			object IEnumerator.Current
+			{
+				get
+				{
+					if (_current == -1)
+						throw new InvalidOperationException();
+					Slot slot = _surjection._slots[_current];
+					return new SurjectionRatio<TInput, TOutput>(slot.Input, slot.Output);
+				}
+			}
+
+			public bool MoveNext()
+			{
+				if (_stack.Count == 0)
+				{
+					_current = default;
+					return false;
+				}
+
+				_current = _stack.Pop();
+
+				int next = _surjection._slots[_current].Right;
+				for (; next != -1;)
+				{
+					_stack.Push(next);
+					next = _surjection._slots[next].Left;
+				}
+				return true;
+			}
+			public void Reset() => Initialize();
+			public void Dispose() { }
+
+			private void Initialize()
+			{
+				_current = default;
+				_stack.Clear();
+
+				if (_surjection._rootIndex == -1)
+					return;
+
+				int current = _surjection._rootIndex;
+				for (; current != -1;)
+				{
+					_stack.Push(current);
+					current = _surjection._slots[current].Left;
+				}
+			}
 		}
 
 		private const int DefaultCapacity = 4;
@@ -151,7 +226,7 @@ namespace Devdeb.Sets.Generic
 			while (current != -1)
 			{
 				if (Is2Node(current))
-				{ 
+				{
 					// fix up 2-Node
 					if (parent == -1)
 						_slots[current].IsRed = true; // current is root. Mark it as red
@@ -165,7 +240,7 @@ namespace Devdeb.Sets.Generic
 							// This case is converted to one of other cased below.
 							Slot parentSlot = _slots[parent];
 							Debug.Assert(parentSlot.IsBlack, "parent must be a black node!");
-							
+
 							if (parentSlot.Right == sibling)
 								RotateLeft(parent);
 							else
@@ -173,7 +248,7 @@ namespace Devdeb.Sets.Generic
 
 							_slots[parent].IsRed = true;
 							_slots[sibling].IsRed = false;    // parent's color
-													  // sibling becomes child of grandParent or root after rotation. Update link from grandParent or root
+															  // sibling becomes child of grandParent or root after rotation. Update link from grandParent or root
 							ReplaceChild(grandParent, parent, sibling);
 							// sibling will become grandParent of current node 
 							grandParent = sibling;
@@ -315,10 +390,10 @@ namespace Devdeb.Sets.Generic
 		public bool TryGetValue(TInput input, out TOutput output)
 		{
 			int current = _rootIndex;
-			for (; current != -1; )
+			for (; current != -1;)
 			{
 				int order = _inputComparer.Compare(input, _slots[current].Input);
-				if(order == 0)
+				if (order == 0)
 				{
 					output = _slots[current].Output;
 					return true;
@@ -344,7 +419,7 @@ namespace Devdeb.Sets.Generic
 					foundMin = current;
 				current = order < 0 ? _slots[current].Left : _slots[current].Right;
 			}
-			if(foundMin != -1)
+			if (foundMin != -1)
 			{
 				output = _slots[foundMin].Output;
 				return true;
@@ -381,7 +456,6 @@ namespace Devdeb.Sets.Generic
 		}
 		private RotationDirection GetRotationDirection(int current, int parent, int grandParent)
 		{
-			//{parentIsOnRight, currentIsOnRight}
 			int parentIsOnRight = _slots[grandParent].Right == parent ? 1 : 0;
 			int currentIsOnRight = _slots[parent].Right == current ? 1 : 0;
 			return (RotationDirection)((parentIsOnRight << 1) | currentIsOnRight);
@@ -504,5 +578,8 @@ namespace Devdeb.Sets.Generic
 			_count++;
 			return index;
 		}
+
+		public IEnumerator<SurjectionRatio<TInput, TOutput>> GetEnumerator() => new Enumerator(this);
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 	}
 }
