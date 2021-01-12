@@ -1,9 +1,9 @@
 ﻿using Devdeb.Sets.Generic;
 using Devdeb.Sets.Ratios;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 
 namespace Devdeb.Storage.Test
 {
@@ -19,7 +19,7 @@ namespace Devdeb.Storage.Test
 		}
 		static void TestSomeShit()
 		{
-			RedBlackTreeSurjection<int, ClassB> surjection = new RedBlackTreeSurjection<int, ClassB>(Comparer<int>.Default);
+			RedBlackTreeSurjection<int, ClassB> surjection = new RedBlackTreeSurjection<int, ClassB>();
 			ClassB b1 = new ClassB { Id = 2 };
 			ClassB b2 = new ClassB { Id = 3 };
 			surjection.TryAdd(b1.Id, b1);
@@ -29,7 +29,7 @@ namespace Devdeb.Storage.Test
 
 		static void TestRedBlackTreeSurjection()
 		{
-			RedBlackTreeSurjection<Guid, Class> surjection = new RedBlackTreeSurjection<Guid, Class>(Comparer<Guid>.Default);
+			RedBlackTreeSurjection<Guid, Class> surjection = new RedBlackTreeSurjection<Guid, Class>();
 			for (int i = 0; i < 10000000; i++)
 			{
 				Class temp = new Class();
@@ -47,20 +47,22 @@ namespace Devdeb.Storage.Test
 			Segment segment = storableHeap.AllocateMemory(10);
 			Segment segment1 = storableHeap.AllocateMemory(10);
 			Segment segment2 = storableHeap.AllocateMemory(10);
-			Segment segment3 = storableHeap.AllocateMemory(10);
-			Segment segment4 = storableHeap.AllocateMemory(10);
+
+			string testString = "TestStringulya";
+			byte[] testStringBuffer = Encoding.UTF8.GetBytes(testString);
+			Segment stringSegment = storableHeap.AllocateMemory(testStringBuffer.Length);
+			storableHeap.Write(stringSegment, testStringBuffer, 0, testStringBuffer.Length);
+
+			stringSegment = new Segment
+			{
+				Pointer = 30,
+				Size = 14
+			};
+			byte[] readBuffer = new byte[stringSegment.Size];
+			storableHeap.ReadBytes(stringSegment, readBuffer, 0, readBuffer.Length);
+			string readString = Encoding.UTF8.GetString(readBuffer);
 
 			storableHeap.FreeMemory(segment1);
-			Segment segment5 = storableHeap.AllocateMemory(5000);
-			storableHeap.Write(segment5, new byte[] { 1 }, 0, 1);
-
-			storableHeap.FreeMemory(segment);
-			storableHeap.FreeMemory(segment2);
-			storableHeap.FreeMemory(segment3);
-			storableHeap.FreeMemory(segment4);
-			storableHeap.Defragment();
-			storableHeap.FreeMemory(new Segment { Pointer = 0, Size = 5000 });
-			storableHeap.Defragment();
 		}
 
 		static void TestFileStreamApi()

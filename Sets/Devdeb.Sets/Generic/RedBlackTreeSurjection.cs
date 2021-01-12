@@ -125,12 +125,20 @@ namespace Devdeb.Sets.Generic
 		private int _usedSlotsCount;
 		private int _count;
 
-		public RedBlackTreeSurjection(IComparer<TInput> inputComparer = null, int capacity = DefaultCapacity)
+		public RedBlackTreeSurjection
+		(
+			IEnumerable<SurjectionRatio<TInput, TOutput>> ratios = null,
+			IComparer<TInput> inputComparer = null,
+			int capacity = DefaultCapacity
+		)
 		{
 			_inputComparer = inputComparer ?? Comparer<TInput>.Default;
 			_slots = new Slot[capacity];
 			_rootIndex = -1;
 			_freeListIndex = -1;
+			if (ratios != null)
+				foreach (SurjectionRatio<TInput, TOutput> ratio in ratios)
+					Add(ratio.Input, ratio.Output);
 		}
 
 		public int Count => _count;
