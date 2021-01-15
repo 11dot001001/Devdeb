@@ -20,7 +20,6 @@
 			}
 			return buffer;
 		}
-
 		public unsafe Segment[] Deserialize(byte[] buffer)
 		{
 			int arrayLength;

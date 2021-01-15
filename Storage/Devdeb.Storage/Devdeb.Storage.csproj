@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Serialization\Devdeb.Serialization\Devdeb.Serialization.csproj" />
     <ProjectReference Include="..\..\Sets\Devdeb.Sets\Devdeb.Sets.csproj" />
   </ItemGroup>
 

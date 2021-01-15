@@ -13,10 +13,8 @@ namespace Devdeb.Sets.Extensions
 				throw new ArgumentNullException(nameof(array));
 			if (desiredLength < 0)
 				throw new ArgumentOutOfRangeException(nameof(desiredLength));
-			if (desiredLength < array.Length)
-				throw new Exception($"Specified length {desiredLength} is less than {nameof(array.Length)} : {array.Length}.");
 
-			if (array.Length == desiredLength)
+			if (array.Length >= desiredLength)
 				return;
 
 			T[] newArray = new T[desiredLength];

@@ -40,15 +40,44 @@ namespace Devdeb.Storage
 					segments.Enqueue(segment);
 				else
 					_freeSegmentsSizes.Add(segment.Size, new Queue<Segment>(new Segment[] { segment }));
+				RemergeFreeSegments();
 			}
 			public void FreeSegment(Segment segment)
 			{
-				Debug.Assert(_usedSegments.Remove(segment), $"The {nameof(segment)} was removed.");
+				Debug.Assert(_usedSegments.Remove(segment), $"The {nameof(segment)} has alreade been removed.");
 				_freeSegmentsPointers.Add(segment.Pointer, segment);
 				if (_freeSegmentsSizes.TryGetValue(segment.Size, out Queue<Segment> segments))
 					segments.Enqueue(segment);
 				else
 					_freeSegmentsSizes.Add(segment.Size, new Queue<Segment>(new Segment[] { segment }));
+				RemergeFreeSegments();
+			}
+
+			private void RemergeFreeSegments()
+			{
+				Segment[] segments = _freeSegmentsPointers.Select(x => x.Output).ToArray();
+				if (segments.Length < 2)
+					return;
+
+				Segment previous = segments[0];
+				for (int i = 1; i != segments.Length; i++)
+				{
+					Segment current = segments[i];
+					if (previous.Pointer + previous.Size != current.Pointer)
+					{
+						previous = current;
+						continue;
+					}
+					Segment mergedSegment = new Segment
+					{
+						Pointer = previous.Pointer,
+						Size = previous.Size + current.Size
+					};
+					Debug.Assert(_freeSegmentsPointers.Remove(previous.Pointer));
+					Debug.Assert(_freeSegmentsPointers.Remove(current.Pointer));
+					_freeSegmentsPointers.Add(mergedSegment.Pointer, mergedSegment);
+					previous = mergedSegment;
+				}
 			}
 		}
 
@@ -61,6 +90,7 @@ namespace Devdeb.Storage
 		private readonly object _currentHeapSizeLock;
 		private readonly DirectoryInfo _heapDirectory;
 		private readonly SegmentsInformation _segments;
+		private readonly bool _isInitializationFirst;
 
 		public StorableHeap(DirectoryInfo heapDirectory, long maxHeapSize)
 		{
@@ -78,6 +108,7 @@ namespace Devdeb.Storage
 				using FileStream fileStream = File.Open(HeapFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
 				_currentHeapSize = fileStream.Length - 1;
 				_segments = new SegmentsInformation(freeSegments, usedSegments);
+				_isInitializationFirst = false;
 			}
 			else
 			{
@@ -96,12 +127,14 @@ namespace Devdeb.Storage
 				_ = fileStream.Seek(_currentHeapSize, SeekOrigin.Begin);
 				fileStream.WriteByte(0);
 				fileStream.Flush();
+				_isInitializationFirst = true;
 			}
 		}
 
 		protected string HeapFilePath => Path.Combine(_heapDirectory.FullName, HeapFileName);
 		protected string FreeSegmentsFilePath => Path.Combine(_heapDirectory.FullName, FreeSegmentsFileName);
 		public long UsedSize => _currentHeapSize - _segments.FreeSize;
+		public bool IsInitializationFirst => _isInitializationFirst;
 
 		public Segment AllocateMemory(long size)
 		{
@@ -139,8 +172,6 @@ namespace Devdeb.Storage
 			}
 			else
 			{
-				//add defragmentation
-
 				lock (_currentHeapSizeLock)
 				{
 					if (_currentHeapSize + size > _maxHeapSize)

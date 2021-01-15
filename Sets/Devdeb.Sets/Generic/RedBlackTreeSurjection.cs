@@ -147,7 +147,7 @@ namespace Devdeb.Sets.Generic
 		{
 			bool result = TryAdd(input, output);
 			if (!result)
-				throw new ArgumentException($"An {nameof(input)} element with the same vaue {input} already exists.");
+				throw new ArgumentException($"An {nameof(input)} element with the same value {input} already exists.");
 		}
 		public bool TryAdd(TInput input, TOutput output)
 		{
