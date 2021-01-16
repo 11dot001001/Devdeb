@@ -1,6 +1,7 @@
 ﻿using Devdeb.Sets.Extensions;
 using Devdeb.Sets.Generic;
 using Devdeb.Sets.Ratios;
+using Devdeb.Storage.Serializers;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -18,6 +19,8 @@ namespace Devdeb.Storage.Test.DataSourceTests
 		public void Test()
 		{
 			DataSource dataSource = new DataSource(DatabaseDirectoryInfo, MaxHeapSize);
+
+			StoredClass[] startStoredClasses = dataSource.GetAll();
 
 			StoredClass storedClass1 = new StoredClass() //1004 21.
 			{
@@ -41,6 +44,8 @@ namespace Devdeb.Storage.Test.DataSourceTests
 			bool is0WasFound = dataSource.TryGetById(0, out StoredClass storedClass0);
 			bool is15WasFound = dataSource.TryGetById(15, out StoredClass storedClass15);
 			bool is435234523WasFound = dataSource.TryGetById(435234523, out StoredClass storedClass435234523);
+
+			StoredClass[] storedClasses = dataSource.GetAll();
 		}
 
 		public class StoredClass
@@ -97,27 +102,22 @@ namespace Devdeb.Storage.Test.DataSourceTests
 		{
 			private class IndexSerializer
 			{
-				public int Size() => sizeof(int) + 2 * sizeof(long);
+				private readonly SegmentSerializer _segmentSerializer = new SegmentSerializer();
+
+				public int Size() => sizeof(int) + _segmentSerializer.Size();
 				public unsafe void Serialize(SurjectionRatio<int, Segment> instance, byte[] buffer, int offset)
 				{
 					ArrayExtensions.EnsureLength(ref buffer, offset + Size());
 					fixed (byte* bufferPointer = &buffer[offset])
-					{
 						*(int*)bufferPointer = instance.Input;
-						*(long*)((int*)bufferPointer + 1) = instance.Output.Pointer;
-						*((long*)((int*)bufferPointer + 1) + 1) = instance.Output.Size;
-					}
+					_segmentSerializer.Serialize(instance.Output, buffer, offset += sizeof(int));
 				}
 				public unsafe SurjectionRatio<int, Segment> Deserialize(byte[] buffer, int offset)
 				{
 					int id;
-					Segment segment = new Segment();
 					fixed (byte* bufferPointer = &buffer[offset])
-					{
 						id = *(int*)bufferPointer;
-						segment.Pointer = *(long*)((int*)bufferPointer + 1);
-						segment.Size = *((long*)((int*)bufferPointer + 1) + 1);
-					}
+					Segment segment = _segmentSerializer.Deserialize(buffer, offset += sizeof(int));
 					return new SurjectionRatio<int, Segment>(id, segment);
 				}
 			}
@@ -139,7 +139,7 @@ namespace Devdeb.Storage.Test.DataSourceTests
 					*(int*)bufferPointer = indexes.Length;
 				offset += ArrayLengthSize;
 				for (int i = 0; i < indexes.Length; i++)
-				{ 
+				{
 					_indexSerializer.Serialize(indexes[i], buffer, offset);
 					offset += _indexSerializer.Size();
 				}
@@ -152,7 +152,7 @@ namespace Devdeb.Storage.Test.DataSourceTests
 				offset += ArrayLengthSize;
 				SurjectionRatio<int, Segment>[] indexes = new SurjectionRatio<int, Segment>[arrayLength];
 				for (int i = 0; i != indexes.Length; i++)
-				{ 
+				{
 					indexes[i] = _indexSerializer.Deserialize(buffer, offset);
 					offset += _indexSerializer.Size();
 				}
@@ -163,13 +163,17 @@ namespace Devdeb.Storage.Test.DataSourceTests
 		public class DataSource
 		{
 			private readonly StorableHeap _storableHeap;
+			private readonly MetaSerializer _metaSerializer;
 			private readonly StoredClassSerializer _storedClassSerializer;
+			private readonly SegmentSerializer _segmentSerializer;
 			private readonly Meta _meta;
 
 			public DataSource(DirectoryInfo heapDirectory, long maxHeapSize)
 			{
 				_storableHeap = new StorableHeap(heapDirectory, maxHeapSize);
+				_metaSerializer = new MetaSerializer();
 				_storedClassSerializer = new StoredClassSerializer();
+				_segmentSerializer = new SegmentSerializer();
 				_meta = InitializeMeta();
 			}
 
@@ -184,7 +188,7 @@ namespace Devdeb.Storage.Test.DataSourceTests
 				byte[] buffer = new byte[_storedClassSerializer.Size(instance)];
 				_storedClassSerializer.Serialize(instance, buffer, 0);
 				_storableHeap.Write(instanceSegment, buffer, 0, buffer.Length);
-				UploadMeta(_meta, false);
+				UploadMeta(_meta);
 				return true;
 			}
 			public bool TryGetById(int id, out StoredClass instance)
@@ -197,7 +201,7 @@ namespace Devdeb.Storage.Test.DataSourceTests
 
 				byte[] buffer = new byte[segment.Size]; //segment.Size incredible crutch may be.
 				_storableHeap.ReadBytes(segment, buffer, 0, buffer.Length);
-				instance =_storedClassSerializer.Deserialize(buffer, 0);
+				instance = _storedClassSerializer.Deserialize(buffer, 0);
 				return true;
 			}
 			public void RemoveById(int id)
@@ -205,65 +209,77 @@ namespace Devdeb.Storage.Test.DataSourceTests
 				if (!_meta.StoredClassPrimaryIndexes.Remove(id, out Segment segment))
 					return;
 				_storableHeap.FreeMemory(segment);
-				UploadMeta(_meta, false);
+				UploadMeta(_meta);
+			}
+			public StoredClass[] GetAll()
+			{
+				Segment[] segments = _meta.StoredClassPrimaryIndexes.Select(x => x.Output).ToArray();
+				StoredClass[] result = new StoredClass[segments.Length];
+				for (int i = 0; i != result.Length; i++)
+				{
+					byte[] buffer = new byte[segments[i].Size]; //segment.Size incredible crutch may be.
+					_storableHeap.ReadBytes(segments[i], buffer, 0, buffer.Length);
+					result[i] = _storedClassSerializer.Deserialize(buffer, 0);
+				}
+				return result;
 			}
 
 			private unsafe Meta InitializeMeta()
 			{
 				if (!_storableHeap.IsInitializationFirst)
 					return LoadMeta();
+				InitializeMetaSegment();
 				Meta meta = new Meta();
-				UploadMeta(meta, true);
+				UploadMeta(meta);
 				return meta;
 			}
 			private unsafe Meta LoadMeta()
 			{
-				byte[] metaLengthBuffer = new byte[MetaLengthSize];
-				_storableHeap.ReadBytes(MetaLengthSegment, metaLengthBuffer, 0, metaLengthBuffer.Length);
-				int metaLength;
-				fixed (byte* metaLengthBufferPointer = &metaLengthBuffer[0])
-					metaLength = *(int*)metaLengthBufferPointer;
-
-				byte[] metaBuffer = new byte[metaLength];
-				_storableHeap.ReadBytes(GetMetaSegment(MetaCapacity), metaBuffer, 0, metaBuffer.Length);
-				return new MetaSerializer().Deserialize(metaBuffer, 0);
+				Segment metaSegment = LoadMetaSegment();
+				Debug.Assert(metaSegment != default);
+				byte[] buffer = new byte[metaSegment.Size];
+				_storableHeap.ReadBytes(metaSegment, buffer, 0, buffer.Length);
+				return _metaSerializer.Deserialize(buffer, 0);
 			}
-			private unsafe void UploadMeta(Meta meta, bool isInitialization)
+			private unsafe void UploadMeta(Meta meta)
 			{
-				MetaSerializer metaSerializer = new MetaSerializer();
+				int metaLength = _metaSerializer.Size(meta);
+				Segment metaSegment = LoadMetaSegment();
+				if(metaLength != metaSegment.Size)
+				{
+					if (metaSegment != default)
+						_storableHeap.FreeMemory(metaSegment);
+					metaSegment = _storableHeap.AllocateMemory(metaLength);
+					UploadMetaSegment(metaSegment);
+				}
 
-				if (isInitialization)
-					Debug.Assert(_storableHeap.AllocateMemory(MetaLengthSize) == MetaLengthSegment);
-
-				int metaLength = metaSerializer.Size(meta);
-				byte[] metaLengthBuffer = new byte[MetaLengthSize];
-				fixed (byte* metaLengthBufferPointer = &metaLengthBuffer[0])
-					*(int*)metaLengthBufferPointer = metaLength;
-				_storableHeap.Write(MetaLengthSegment, metaLengthBuffer, 0, metaLengthBuffer.Length);
-
-				if (metaLength > MetaCapacity)
-					throw new Exception("Temporary restriction for meta length.");
-				Segment metaSegment = GetMetaSegment(metaLength);
-				if (isInitialization)
-					_storableHeap.AllocateMemory(MetaCapacity);
-				//Debug.Assert(_storableHeap.AllocateMemory(MetaCapacity) == metaSegment); //while above restriction
-				byte[] metaBuffer = new byte[metaLength];
-				metaSerializer.Serialize(meta, metaBuffer, 0);
-				_storableHeap.Write(GetMetaSegment(MetaCapacity), metaBuffer, 0, metaBuffer.Length);
+				byte[] buffer = new byte[metaLength];
+				_metaSerializer.Serialize(meta, buffer, 0);
+				_storableHeap.Write(metaSegment, buffer, 0, buffer.Length);
 			}
 
-			private const int MetaLengthSize = sizeof(int);
-			private Segment MetaLengthSegment => new Segment
+			private Segment InitializaionSegment => new Segment
 			{
 				Pointer = 0,
-				Size = MetaLengthSize
+				Size = _segmentSerializer.Size()
 			};
-			private Segment GetMetaSegment(int metaLength) => new Segment
+			private void InitializeMetaSegment()
 			{
-				Pointer = MetaLengthSize,
-				Size = metaLength
-			};
-			private const int MetaCapacity = 1000;
+				Debug.Assert(_storableHeap.AllocateMemory(_segmentSerializer.Size()) == InitializaionSegment);
+				UploadMetaSegment(default);
+			}
+			private Segment LoadMetaSegment()
+			{
+				byte[] buffer = new byte[_segmentSerializer.Size()];
+				_storableHeap.ReadBytes(InitializaionSegment, buffer, 0, buffer.Length);
+				return _segmentSerializer.Deserialize(buffer, 0);
+			}
+			private void UploadMetaSegment(Segment segment)
+			{
+				byte[] buffer = new byte[_segmentSerializer.Size()];
+				_segmentSerializer.Serialize(segment, buffer, 0);
+				_storableHeap.Write(InitializaionSegment, buffer, 0, buffer.Length);
+			}
 		}
 	}
 }
