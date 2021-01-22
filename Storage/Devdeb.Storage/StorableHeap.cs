@@ -1,4 +1,6 @@
-﻿using Devdeb.Sets.Generic;
+﻿using Devdeb.Serialization.Serializers;
+using Devdeb.Serialization.Serializers.System;
+using Devdeb.Sets.Generic;
 using Devdeb.Storage.Diagnostics;
 using Devdeb.Storage.Serializers;
 using System;
@@ -110,7 +112,9 @@ namespace Devdeb.Storage
 		private readonly SegmentsInformation _segments;
 		private readonly bool _isInitializationFirst;
 
-		private readonly SegmentArraySerializer _segmentArraySerializer;
+		private readonly Int32Serializer _int32Serializer;
+		private readonly SegmentSerializer _segmentSerializer;
+		private readonly ArrayLengthSerializer<Segment> _segmentArraySerializer;
 		private readonly SegmentsStateVisualizer _segmentsStateVisualizer;
 		private readonly StorableHeapDiagnostic _storableHeapDiagnostic;
 
@@ -124,7 +128,9 @@ namespace Devdeb.Storage
 			_heapDirectory = heapDirectory;
 			_maxHeapSize = maxHeapSize;
 			_currentHeapSizeLock = new object();
-			_segmentArraySerializer = new SegmentArraySerializer();
+			_int32Serializer = new Int32Serializer();
+			_segmentSerializer = new SegmentSerializer();
+			_segmentArraySerializer = new ArrayLengthSerializer<Segment>(_segmentSerializer);
 			_storableHeapDiagnostic = new StorableHeapDiagnostic(this);
 
 			if (TryLoadSegments(out Segment[] freeSegments, out Segment[] usedSegments))
@@ -320,8 +326,10 @@ namespace Devdeb.Storage
 			Segment[] freeSegments = _segments.FreePointers.Select(x => x.Output).ToArray();
 			Segment[] usedSegments = _segments.Used.ToArray();
 
-			byte[] freeSegmentsBuffer = _segmentArraySerializer.Serialize(freeSegments);
-			byte[] usedSegmentsBuffer = _segmentArraySerializer.Serialize(usedSegments);
+			byte[] freeSegmentsBuffer = new byte[_segmentArraySerializer.Size(freeSegments)];
+			byte[] usedSegmentsBuffer = new byte[_segmentArraySerializer.Size(usedSegments)];
+			_segmentArraySerializer.Serialize(freeSegments, freeSegmentsBuffer, 0);
+			_segmentArraySerializer.Serialize(usedSegments, usedSegmentsBuffer, 0);
 
 			using FileStream fileStream = File.Open(FreeSegmentsFilePath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
 			_ = fileStream.Seek(0, SeekOrigin.Begin);
@@ -331,8 +339,9 @@ namespace Devdeb.Storage
 		}
 		private unsafe bool TryLoadSegments(out Segment[] freeSegments, out Segment[] usedSegments)
 		{
+			const int arrayLengthSize = sizeof(int);
 			using FileStream fileStream = File.Open(FreeSegmentsFilePath, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
-			if (fileStream.Length < SegmentArraySerializer.ArrayLengthSize)
+			if (fileStream.Length < arrayLengthSize)
 			{
 				freeSegments = default;
 				usedSegments = default;
@@ -348,23 +357,21 @@ namespace Devdeb.Storage
 				using FileStream fileStream = File.Open(FreeSegmentsFilePath, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
 				_ = fileStream.Seek(offset, SeekOrigin.Begin);
 
-				byte[] arrayLengthBytes = new byte[SegmentArraySerializer.ArrayLengthSize];
+				byte[] arrayLengthBytes = new byte[arrayLengthSize];
 				int readCount = fileStream.Read(arrayLengthBytes, 0, arrayLengthBytes.Length);
 				if (readCount != arrayLengthBytes.Length)
 					throw new Exception($"The number of bytes for array length read from the file doesn't match {nameof(arrayLengthBytes.Length)}");
 
-				int arrayLength;
-				fixed (byte* arrayLengthBytesPointer = &arrayLengthBytes[0])
-					arrayLength = *(int*)arrayLengthBytesPointer;
+				int arrayLength = _int32Serializer.Deserialize(arrayLengthBytes, 0);
 
-				int arrayDataBytesCount = arrayLength * SegmentArraySerializer.ElementSize;
-				byte[] buffer = new byte[SegmentArraySerializer.ArrayLengthSize + arrayDataBytesCount];
+				int arrayDataBytesCount = arrayLength * _segmentSerializer.Size;
+				byte[] buffer = new byte[arrayLengthSize + arrayDataBytesCount];
 				Array.Copy(arrayLengthBytes, 0, buffer, 0, arrayLengthBytes.Length);
-				readCount = fileStream.Read(buffer, SegmentArraySerializer.ArrayLengthSize, arrayDataBytesCount);
+				readCount = fileStream.Read(buffer, arrayLengthSize, arrayDataBytesCount);
 				if (readCount != arrayDataBytesCount)
 					throw new Exception($"The number of bytes for segments buffer read from the file doesn't match {nameof(arrayDataBytesCount)}");
 				offset = fileStream.Position;
-				return _segmentArraySerializer.Deserialize(buffer);
+				return _segmentArraySerializer.Deserialize(buffer, 0, buffer.Length);
 			}
 		}
 	}

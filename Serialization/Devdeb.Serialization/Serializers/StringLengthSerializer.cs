@@ -31,7 +31,7 @@ namespace Devdeb.Serialization.Serializers
 				return;
 			_stringSerializer.Serialize(instance, buffer, offset);
 		}
-		public override string Deserialize(byte[] buffer, int offset, int? count)
+		public override string Deserialize(byte[] buffer, int offset, int? count = null)
 		{
 			VerifyDeserialize(buffer, offset, count);
 			int stringSize = _int32Serializer.Deserialize(buffer, ref offset);

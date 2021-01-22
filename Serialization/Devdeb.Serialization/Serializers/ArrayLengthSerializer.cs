@@ -28,12 +28,16 @@ namespace Devdeb.Serialization.Serializers
 		{
 			VerifySerialize(instance, buffer, offset);
 			_int32Serializer.Serialize(instance.Length, buffer, ref offset);
+			if (instance.Length == 0)
+				return;
 			_arraySerializer.Serialize(instance, buffer, offset);
 		}
 		public override T[] Deserialize(byte[] buffer, int offset, int? count = null)
 		{
 			VerifyDeserialize(buffer, offset, count);
 			int elementsLength = _int32Serializer.Deserialize(buffer, ref offset);
+			if (elementsLength == 0)
+				return new T[0];
 			return _arraySerializer.Deserialize(buffer, offset, elementsLength);
 		}
 	}
