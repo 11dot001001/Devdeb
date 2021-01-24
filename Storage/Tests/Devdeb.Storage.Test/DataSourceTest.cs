@@ -62,180 +62,193 @@ namespace Devdeb.Storage.Test.DataSourceTests
 		}
 		public class Meta
 		{
-			private readonly DataSetMeta _storedClassSetMeta;
+			public Segment StoredClassSetMetaPointer { get; set; }
+		}
+		public class StoredReferenceValue<T>
+		{
+			private Segment _pointer;
 
-			public Meta() : this(new DataSetMeta()) { }
-			public Meta(DataSetMeta storedClassSetMeta)
+			public StoredReferenceValue(Segment pointer, ISerializer<T> serializer) : this(pointer, default, serializer) { }
+			public StoredReferenceValue(Segment pointer, T value, ISerializer<T> serializer)
 			{
-				_storedClassSetMeta = storedClassSetMeta ?? throw new ArgumentNullException(nameof(storedClassSetMeta));
+				_pointer = pointer;
+				Value = value;
+				Serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
 			}
 
-			public DataSetMeta StoredClassSetMeta => _storedClassSetMeta;
-		}
+			public Segment Pointer
+			{
+				get => _pointer;
+				set { _pointer = value; PointerUpdated?.Invoke(this, value); }
+			}
+			public T Value { get; set; }
+			public ISerializer<T> Serializer { get; set; }
 
+			public event EventHandler<Segment> PointerUpdated;
+		}
 		public class DataSource
 		{
 			private readonly StorableHeap _storableHeap;
-			private readonly Meta _meta;
+			private readonly StoredReferenceValue<Meta> _meta;
+			private readonly StoredReferenceValue<DataSetMeta> _storedClassSetMeta;
 			private readonly DataSet<StoredClass> _storedClassSet;
 
 			public DataSource(DirectoryInfo heapDirectory, long maxHeapSize)
 			{
 				_storableHeap = new StorableHeap(heapDirectory, maxHeapSize);
 				_meta = InitializeMeta();
-				_storedClassSet = InitializeStoredClassSet();
+				_storedClassSetMeta = InitializeStoredClassSetMeta();
+				_storedClassSet = InitializeStoredClass();
 			}
 
 			public DataSet<StoredClass> StoredClassSet => _storedClassSet;
 
-			private unsafe DataSet<StoredClass> InitializeStoredClassSet()
+			public StoredReferenceValue<T> Initialize<T>(T data, ISerializer<T> serializer)
+			{
+				int dataSize = serializer.Size(data);
+				byte[] buffer = new byte[dataSize];
+				serializer.Serialize(data, buffer, 0);
+				Segment pointer = _storableHeap.AllocateMemory(dataSize);
+				_storableHeap.Write(pointer, buffer, 0, buffer.Length);
+				return new StoredReferenceValue<T>(pointer, data, serializer);
+			}
+			public StoredReferenceValue<T> Load<T>(Segment pointer, ISerializer<T> serializer)
+			{
+				byte[] buffer = new byte[pointer.Size];
+				_storableHeap.ReadBytes(pointer, buffer, 0, buffer.Length);
+				T data = serializer.Deserialize(buffer, 0);
+				return new StoredReferenceValue<T>(pointer, data, serializer);
+			}
+			public void Upload<T>(StoredReferenceValue<T> referenceValue)
+			{
+				int size = referenceValue.Serializer.Size(referenceValue.Value);
+				Segment uploadSegment = referenceValue.Pointer;
+				bool resized = false;
+				if (size != referenceValue.Pointer.Size)
+				{
+					Debug.Assert(referenceValue.Pointer != default);
+					uploadSegment = _storableHeap.AllocateMemory(size);
+					resized = true;
+				}
+				byte[] buffer = new byte[size];
+				referenceValue.Serializer.Serialize(referenceValue.Value, buffer, 0);
+				_storableHeap.Write(uploadSegment, buffer, 0, buffer.Length);
+				if (resized)
+					referenceValue.Pointer = uploadSegment;
+			}
+
+			private StoredReferenceValue<Meta> InitializeMeta()
+			{
+				StoredReferenceValue<Meta> meta = null;
+				try
+				{
+					if (_storableHeap.IsInitializationFirst)
+					{
+						meta = Initialize(new Meta(), Serializers.MetaSeriaizer);
+						uploadMetaPointer(meta.Pointer);
+						return meta;
+					}
+
+					byte[] buffer = new byte[Serializers.SegmentSerializer.Size];
+					_storableHeap.ReadBytes(_storableHeap.EntrySegment, buffer, 0, buffer.Length);
+					Segment metaPointer = Serializers.SegmentSerializer.Deserialize(buffer, 0);
+					meta = Load(metaPointer, Serializers.MetaSeriaizer);
+					return meta;
+				}
+				finally { meta.PointerUpdated += (_, pointer) => uploadMetaPointer(pointer); }
+
+				void uploadMetaPointer(Segment metaPointer)
+				{
+					byte[] buffer = new byte[Serializers.SegmentSerializer.Size];
+					Serializers.SegmentSerializer.Serialize(metaPointer, buffer, 0);
+					_storableHeap.Write(_storableHeap.EntrySegment, buffer, 0, buffer.Length);
+				}
+			}
+			private StoredReferenceValue<DataSetMeta> InitializeStoredClassSetMeta()
 			{
 				Debug.Assert(_meta != default);
-				if (!_storableHeap.IsInitializationFirst)
-					return LoadStoredClassSet();
-				DataSet<StoredClass> storedClassSet = new DataSet<StoredClass>
-				(
-					_storableHeap,
-					this,
-					_meta.StoredClassSetMeta,
-					new RedBlackTreeSurjection<int, Segment>(),
-					Serializers.StoredClassSerializer
-				);
-				DataSet<StoredClass>.UploadDataSet(storedClassSet);
-				return storedClassSet;
-			}
-			private DataSet<StoredClass> LoadStoredClassSet()
-			{
-				Debug.Assert(_meta.StoredClassSetMeta != default);
-				RedBlackTreeSurjection<int, Segment> primaryIndexes = DataSet<StoredClass>.LoadPrimaryIndexes(_storableHeap, _meta.StoredClassSetMeta);
-				return new DataSet<StoredClass>(_storableHeap, this, _meta.StoredClassSetMeta, primaryIndexes, Serializers.StoredClassSerializer);
-			}
-
-			private Meta InitializeMeta()
-			{
-				if (!_storableHeap.IsInitializationFirst)
-					return LoadMeta();
-				InitializeMetaSegment();
-				Meta meta = new Meta();
-				UploadMeta(meta);
-				return meta;
-			}
-			private unsafe Meta LoadMeta()
-			{
-				Segment metaSegment = LoadMetaSegment();
-				Debug.Assert(metaSegment != default);
-				byte[] buffer = new byte[metaSegment.Size];
-				_storableHeap.ReadBytes(metaSegment, buffer, 0, buffer.Length);
-				return Serializers.MetaSeriaizer.Deserialize(buffer, 0);
-			}
-			private unsafe void UploadMeta(Meta meta)
-			{
-				int metaLength = Serializers.MetaSeriaizer.Size;
-				Segment metaSegment = LoadMetaSegment();
-				if (metaLength != metaSegment.Size)
+				StoredReferenceValue<DataSetMeta> dataSetMeta = null;
+				try
 				{
-					if (metaSegment != default)
-						_storableHeap.FreeMemory(metaSegment);
-					metaSegment = _storableHeap.AllocateMemory(metaLength);
-					UploadMetaSegment(metaSegment);
+					if (_storableHeap.IsInitializationFirst)
+					{
+						dataSetMeta = Initialize(new DataSetMeta(), Serializers.DataSetMetaSerializer);
+						uploadStoredClassDataSetPointer(dataSetMeta.Pointer);
+						return dataSetMeta;
+					}
+					dataSetMeta = Load(_meta.Value.StoredClassSetMetaPointer, Serializers.DataSetMetaSerializer);
+					return dataSetMeta;
 				}
+				finally { dataSetMeta.PointerUpdated += (_, pointer) => uploadStoredClassDataSetPointer(pointer); }
 
-				byte[] buffer = new byte[metaLength];
-				Serializers.MetaSeriaizer.Serialize(meta, buffer, 0);
-				_storableHeap.Write(metaSegment, buffer, 0, buffer.Length);
+				void uploadStoredClassDataSetPointer(Segment pointer)
+				{
+					_meta.Value.StoredClassSetMetaPointer = pointer;
+					Upload(_meta);
+				}
 			}
-			internal void UploadMeta() => UploadMeta(_meta);
+			private DataSet<StoredClass> InitializeStoredClass()
+			{
+				Debug.Assert(_storedClassSetMeta != default);
+				StoredReferenceValue<RedBlackTreeSurjection<int, Segment>> primaryIndexes = null;
+				
+				if (_storableHeap.IsInitializationFirst)
+				{
+					primaryIndexes = Initialize(new RedBlackTreeSurjection<int, Segment>(), Serializers.IndexesSerializer);
+					uploadPrimaryIndexesPointer(primaryIndexes.Pointer);
+				}
+				else
+					primaryIndexes = Load(_storedClassSetMeta.Value.PrimaryIndexesPointer, Serializers.IndexesSerializer);
 
-			private Segment InitializaionSegment => new Segment
-			{
-				Pointer = 0,
-				Size = Serializers.SegmentSerializer.Size
-			};
-			private void InitializeMetaSegment()
-			{
-				Debug.Assert(_storableHeap.AllocateMemory(Serializers.SegmentSerializer.Size) == InitializaionSegment);
-				UploadMetaSegment(default);
-			}
-			private Segment LoadMetaSegment()
-			{
-				byte[] buffer = new byte[Serializers.SegmentSerializer.Size];
-				_storableHeap.ReadBytes(InitializaionSegment, buffer, 0, buffer.Length);
-				return Serializers.SegmentSerializer.Deserialize(buffer, 0);
-			}
-			private void UploadMetaSegment(Segment segment)
-			{
-				byte[] buffer = new byte[Serializers.SegmentSerializer.Size];
-				Serializers.SegmentSerializer.Serialize(segment, buffer, 0);
-				_storableHeap.Write(InitializaionSegment, buffer, 0, buffer.Length);
+				primaryIndexes.PointerUpdated += (_, pointer) => uploadPrimaryIndexesPointer(pointer);
+				return new DataSet<StoredClass>(_storableHeap, this, primaryIndexes, Serializers.StoredClassSerializer);
+
+				void uploadPrimaryIndexesPointer(Segment pointer)
+				{
+					_storedClassSetMeta.Value.PrimaryIndexesPointer = pointer;
+					Upload(_storedClassSetMeta);
+				}
 			}
 		}
 		public class DataSet<T>
 		{
-			static internal RedBlackTreeSurjection<int, Segment> LoadPrimaryIndexes(StorableHeap storableHeap, DataSetMeta meta)
-			{
-				Debug.Assert(meta.PrimaryIndexesPointer != default);
-				byte[] buffer = new byte[meta.PrimaryIndexesPointer.Size];
-				storableHeap.ReadBytes(meta.PrimaryIndexesPointer, buffer, 0, buffer.Length);
-				return new RedBlackTreeSurjection<int, Segment>(Serializers.IndexesSerializer.Deserialize(buffer, 0));
-			}
-			static internal void UploadDataSet(DataSet<T> dataSet) => UploadPrimaryIndexes(dataSet);
-
-			static private void UploadPrimaryIndexes(DataSet<T> dataSet)
-			{
-				SurjectionRatio<int, Segment>[] indexes = dataSet._primaryIndexes.ToArray();
-				int size = Serializers.IndexesSerializer.Size(indexes);
-				if (size != dataSet._meta.PrimaryIndexesPointer.Size)
-				{
-					if (dataSet._meta.PrimaryIndexesPointer != default)
-						dataSet._storableHeap.FreeMemory(dataSet._meta.PrimaryIndexesPointer);
-					dataSet._meta.PrimaryIndexesPointer = dataSet._storableHeap.AllocateMemory(size);
-					dataSet._dataSource.UploadMeta();
-				}
-				byte[] buffer = new byte[size];
-				Serializers.IndexesSerializer.Serialize(indexes, buffer, 0);
-				dataSet._storableHeap.Write(dataSet._meta.PrimaryIndexesPointer, buffer, 0, buffer.Length);
-			}
-
 			private readonly StorableHeap _storableHeap;
 			private readonly DataSource _dataSource;
-			private readonly DataSetMeta _meta;
-			private readonly RedBlackTreeSurjection<int, Segment> _primaryIndexes;
+			private readonly StoredReferenceValue<RedBlackTreeSurjection<int, Segment>> _primaryIndexes;
 			private readonly ISerializer<T> _entitySerializer;
 
 			public DataSet
 			(
 				StorableHeap storableHeap,
 				DataSource dataSource,
-				DataSetMeta dataSetMeta,
-				RedBlackTreeSurjection<int, Segment> primaryIndexes,
+				StoredReferenceValue<RedBlackTreeSurjection<int, Segment>> primaryIndexes,
 				ISerializer<T> entitySerializer
 			)
 			{
 				_storableHeap = storableHeap ?? throw new ArgumentNullException(nameof(storableHeap));
 				_dataSource = dataSource ?? throw new ArgumentNullException(nameof(dataSource));
-				_meta = dataSetMeta ?? throw new ArgumentNullException(nameof(dataSetMeta));
 				_primaryIndexes = primaryIndexes ?? throw new ArgumentNullException(nameof(primaryIndexes));
 				_entitySerializer = entitySerializer ?? throw new ArgumentNullException(nameof(entitySerializer));
 			}
 
 			public bool Add(int id, T instance)
 			{
-				if (_primaryIndexes.TryGetValue(id, out _))
+				if (_primaryIndexes.Value.TryGetValue(id, out _))
 					return false;
 
 				int instanceLength = _entitySerializer.Size(instance);
 				Segment instanceSegment = _storableHeap.AllocateMemory(instanceLength);
-				_primaryIndexes.Add(id, instanceSegment);
+				_primaryIndexes.Value.Add(id, instanceSegment);
 
 				byte[] buffer = new byte[instanceLength];
 				_entitySerializer.Serialize(instance, buffer, 0);
 				_storableHeap.Write(instanceSegment, buffer, 0, buffer.Length);
-				UploadPrimaryIndexes(this);
+				_dataSource.Upload(_primaryIndexes);
 				return true;
 			}
 			public bool TryGetById(int id, out T instance)
 			{
-				if (!_primaryIndexes.TryGetValue(id, out Segment segment))
+				if (!_primaryIndexes.Value.TryGetValue(id, out Segment segment))
 				{
 					instance = default;
 					return false;
@@ -248,14 +261,14 @@ namespace Devdeb.Storage.Test.DataSourceTests
 			}
 			public void RemoveById(int id)
 			{
-				if (!_primaryIndexes.Remove(id, out Segment segment))
+				if (!_primaryIndexes.Value.Remove(id, out Segment segment))
 					return;
 				_storableHeap.FreeMemory(segment);
-				UploadPrimaryIndexes(this);
+				_dataSource.Upload(_primaryIndexes);
 			}
 			public T[] GetAll()
 			{
-				Segment[] segments = _primaryIndexes.Select(x => x.Output).ToArray();
+				Segment[] segments = _primaryIndexes.Value.Select(x => x.Output).ToArray();
 				T[] result = new T[segments.Length];
 				for (int i = 0; i != result.Length; i++)
 				{
@@ -273,15 +286,7 @@ namespace Devdeb.Storage.Test.DataSourceTests
 			{
 				Int32Serializer = new Int32Serializer();
 				SegmentSerializer = new SegmentSerializer();
-				IndexSerializer = new SurjectionRatioSerializer<int, Segment>
-				(
-					new Int32Serializer(),
-					SegmentSerializer
-				);
-				IndexesSerializer = new ArrayLengthSerializer<SurjectionRatio<int, Segment>>
-				(
-					IndexSerializer
-				);
+				IndexesSerializer = new IndexesSerializer();
 				StoredClassSerializer = new StoredClassSerializer();
 				DataSetMetaSerializer = new DataSetMetaSerializer();
 				MetaSeriaizer = new MetaSeriaizer();
@@ -289,8 +294,7 @@ namespace Devdeb.Storage.Test.DataSourceTests
 
 			static public Int32Serializer Int32Serializer { get; }
 			static public SegmentSerializer SegmentSerializer { get; }
-			static public SurjectionRatioSerializer<int, Segment> IndexSerializer { get; }
-			static public ArrayLengthSerializer<SurjectionRatio<int, Segment>> IndexesSerializer { get; }
+			static public IndexesSerializer IndexesSerializer { get; }
 			static public StoredClassSerializer StoredClassSerializer { get; }
 			static public DataSetMetaSerializer DataSetMetaSerializer { get; }
 			static public MetaSeriaizer MetaSeriaizer { get; }
@@ -353,13 +357,43 @@ namespace Devdeb.Storage.Test.DataSourceTests
 			public override void Serialize(Meta instance, byte[] buffer, int offset)
 			{
 				VerifySerialize(instance, buffer, offset);
-				Serializers.DataSetMetaSerializer.Serialize(instance.StoredClassSetMeta, buffer, offset);
+				Serializers.SegmentSerializer.Serialize(instance.StoredClassSetMetaPointer, buffer, offset);
 			}
 			public override Meta Deserialize(byte[] buffer, int offset)
 			{
 				VerifyDeserialize(buffer, offset);
-				DataSetMeta storedClassSetMeta = Serializers.DataSetMetaSerializer.Deserialize(buffer, offset);
-				return new Meta(storedClassSetMeta);
+				Segment storedClassSetMeta = Serializers.SegmentSerializer.Deserialize(buffer, offset);
+				return new Meta { StoredClassSetMetaPointer = storedClassSetMeta };
+			}
+		}
+		public class IndexesSerializer : Serializer<RedBlackTreeSurjection<int, Segment>>
+		{
+			private readonly ArrayLengthSerializer<SurjectionRatio<int, Segment>> _arraySerializer;
+
+			public IndexesSerializer()
+			{
+				SurjectionRatioSerializer<int, Segment> indexSerializer = new SurjectionRatioSerializer<int, Segment>
+				(
+					new Int32Serializer(),
+					Serializers.SegmentSerializer
+				);
+				_arraySerializer = new ArrayLengthSerializer<SurjectionRatio<int, Segment>>
+				(
+					indexSerializer
+				);
+			}
+
+			public override int Size(RedBlackTreeSurjection<int, Segment> instance)
+			{
+				return _arraySerializer.Size(instance.ToArray());
+			}
+			public override void Serialize(RedBlackTreeSurjection<int, Segment> instance, byte[] buffer, int offset)
+			{
+				_arraySerializer.Serialize(instance.ToArray(), buffer, offset);
+			}
+			public override RedBlackTreeSurjection<int, Segment> Deserialize(byte[] buffer, int offset, int? count = null)
+			{
+				return new RedBlackTreeSurjection<int, Segment>(_arraySerializer.Deserialize(buffer, offset));
 			}
 		}
 	}

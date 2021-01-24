@@ -160,11 +160,17 @@ namespace Devdeb.Storage
 				fileStream.WriteByte(0);
 				fileStream.Flush();
 				_isInitializationFirst = true;
+				Debug.Assert(AllocateMemory(_segmentSerializer.Size) == EntrySegment);
 			}
 		}
 
 		public long UsedSize => _currentHeapSize - _segments.FreeSize;
 		public bool IsInitializationFirst => _isInitializationFirst;
+		public Segment EntrySegment => new Segment
+		{
+			Pointer = 0,
+			Size = _segmentSerializer.Size
+		};
 
 		protected string HeapFilePath => Path.Combine(_heapDirectory.FullName, HeapFileName);
 		protected string FreeSegmentsFilePath => Path.Combine(_heapDirectory.FullName, FreeSegmentsFileName);
