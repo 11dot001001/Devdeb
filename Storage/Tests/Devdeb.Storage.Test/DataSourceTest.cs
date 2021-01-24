@@ -22,8 +22,10 @@ namespace Devdeb.Storage.Test.DataSourceTests
 		{
 			DataSource dataSource = new DataSource(DatabaseDirectoryInfo, MaxHeapSize);
 			DataSet<StoredClass> storedClassSet = dataSource.StoredClassSet;
+			DataSet<Student> studentSet = dataSource.StudenSet;
 
 			StoredClass[] startStoredClasses = storedClassSet.GetAll();
+			Student[] startStudents = studentSet.GetAll();
 
 			StoredClass storedClass1 = new StoredClass() //1004 21.
 			{
@@ -49,6 +51,23 @@ namespace Devdeb.Storage.Test.DataSourceTests
 			bool is435234523WasFound = storedClassSet.TryGetById(435234523, out StoredClass storedClass435234523);
 
 			StoredClass[] storedClasses = storedClassSet.GetAll();
+
+			Student student1 = new Student
+			{
+				Id = 1,
+				Name = "Valer Volodia",
+				Age = 20
+			};
+			Student student2 = new Student
+			{
+				Id = 2,
+				Name = "Lev Belov",
+				Age = 22
+			};
+			studentSet.Add(student1.Id, student1);
+			studentSet.Add(student2.Id, student2);
+
+			Student[] endStudents = studentSet.GetAll();
 		}
 
 		public class StoredClass
@@ -56,13 +75,20 @@ namespace Devdeb.Storage.Test.DataSourceTests
 			public int Id { get; set; }
 			public string Value { get; set; }
 		}
+		public class Student
+		{
+			public int Id { get; set; }
+			public string Name { get; set; }
+			public int Age { get; set; }
+		}
 		public class DataSetMeta
 		{
 			public Segment PrimaryIndexesPointer { get; set; }
 		}
 		public class Meta
 		{
-			public Segment StoredClassSetMetaPointer { get; set; }
+			public Segment StoredClassSetMetaPointer;
+			public Segment StudentSetMetaPointer;
 		}
 		public class StoredReferenceValue<T>
 		{
@@ -86,22 +112,38 @@ namespace Devdeb.Storage.Test.DataSourceTests
 
 			public event EventHandler<Segment> PointerUpdated;
 		}
+
 		public class DataSource
 		{
+			unsafe delegate Segment* DataSetMetaPointerSelector();
+
 			private readonly StorableHeap _storableHeap;
 			private readonly StoredReferenceValue<Meta> _meta;
 			private readonly StoredReferenceValue<DataSetMeta> _storedClassSetMeta;
-			private readonly DataSet<StoredClass> _storedClassSet;
+			private readonly StoredReferenceValue<DataSetMeta> _studentSetMeta;
 
-			public DataSource(DirectoryInfo heapDirectory, long maxHeapSize)
+			public unsafe DataSource(DirectoryInfo heapDirectory, long maxHeapSize)
 			{
 				_storableHeap = new StorableHeap(heapDirectory, maxHeapSize);
 				_meta = InitializeMeta();
-				_storedClassSetMeta = InitializeStoredClassSetMeta();
-				_storedClassSet = InitializeStoredClass();
+
+				_storedClassSetMeta = InitializeDataSetMeta(() =>
+				{
+					fixed (Segment* pointer = &_meta.Value.StoredClassSetMetaPointer)
+						return pointer;
+				});
+				_studentSetMeta = InitializeDataSetMeta(() =>
+				{
+					fixed (Segment* pointer = &_meta.Value.StudentSetMetaPointer)
+						return pointer;
+				});
+
+				StoredClassSet = InitializeDataSet(_storedClassSetMeta, Serializers.StoredClassSerializer);
+				StudenSet = InitializeDataSet(_studentSetMeta, Serializers.StudentSerializer);
 			}
 
-			public DataSet<StoredClass> StoredClassSet => _storedClassSet;
+			public DataSet<StoredClass> StoredClassSet { get; }
+			public DataSet<Student> StudenSet { get; }
 
 			public StoredReferenceValue<T> Initialize<T>(T data, ISerializer<T> serializer)
 			{
@@ -164,7 +206,8 @@ namespace Devdeb.Storage.Test.DataSourceTests
 					_storableHeap.Write(_storableHeap.EntrySegment, buffer, 0, buffer.Length);
 				}
 			}
-			private StoredReferenceValue<DataSetMeta> InitializeStoredClassSetMeta()
+
+			private unsafe StoredReferenceValue<DataSetMeta> InitializeDataSetMeta(DataSetMetaPointerSelector getDataSetMetaPointer)
 			{
 				Debug.Assert(_meta != default);
 				StoredReferenceValue<DataSetMeta> dataSetMeta = null;
@@ -176,37 +219,37 @@ namespace Devdeb.Storage.Test.DataSourceTests
 						uploadStoredClassDataSetPointer(dataSetMeta.Pointer);
 						return dataSetMeta;
 					}
-					dataSetMeta = Load(_meta.Value.StoredClassSetMetaPointer, Serializers.DataSetMetaSerializer);
+					dataSetMeta = Load(*getDataSetMetaPointer(), Serializers.DataSetMetaSerializer);
 					return dataSetMeta;
 				}
 				finally { dataSetMeta.PointerUpdated += (_, pointer) => uploadStoredClassDataSetPointer(pointer); }
 
 				void uploadStoredClassDataSetPointer(Segment pointer)
 				{
-					_meta.Value.StoredClassSetMetaPointer = pointer;
+					*getDataSetMetaPointer() = pointer;
 					Upload(_meta);
 				}
 			}
-			private DataSet<StoredClass> InitializeStoredClass()
+			private DataSet<T> InitializeDataSet<T>(StoredReferenceValue<DataSetMeta> dataSetMeta, ISerializer<T> entitySerializer)
 			{
-				Debug.Assert(_storedClassSetMeta != default);
+				Debug.Assert(dataSetMeta != default);
 				StoredReferenceValue<RedBlackTreeSurjection<int, Segment>> primaryIndexes = null;
-				
+
 				if (_storableHeap.IsInitializationFirst)
 				{
 					primaryIndexes = Initialize(new RedBlackTreeSurjection<int, Segment>(), Serializers.IndexesSerializer);
 					uploadPrimaryIndexesPointer(primaryIndexes.Pointer);
 				}
 				else
-					primaryIndexes = Load(_storedClassSetMeta.Value.PrimaryIndexesPointer, Serializers.IndexesSerializer);
+					primaryIndexes = Load(dataSetMeta.Value.PrimaryIndexesPointer, Serializers.IndexesSerializer);
 
 				primaryIndexes.PointerUpdated += (_, pointer) => uploadPrimaryIndexesPointer(pointer);
-				return new DataSet<StoredClass>(_storableHeap, this, primaryIndexes, Serializers.StoredClassSerializer);
+				return new DataSet<T>(_storableHeap, this, primaryIndexes, entitySerializer);
 
 				void uploadPrimaryIndexesPointer(Segment pointer)
 				{
-					_storedClassSetMeta.Value.PrimaryIndexesPointer = pointer;
-					Upload(_storedClassSetMeta);
+					dataSetMeta.Value.PrimaryIndexesPointer = pointer;
+					Upload(dataSetMeta);
 				}
 			}
 		}
@@ -288,6 +331,7 @@ namespace Devdeb.Storage.Test.DataSourceTests
 				SegmentSerializer = new SegmentSerializer();
 				IndexesSerializer = new IndexesSerializer();
 				StoredClassSerializer = new StoredClassSerializer();
+				StudentSerializer = new StudentSerializer();
 				DataSetMetaSerializer = new DataSetMetaSerializer();
 				MetaSeriaizer = new MetaSeriaizer();
 			}
@@ -296,6 +340,7 @@ namespace Devdeb.Storage.Test.DataSourceTests
 			static public SegmentSerializer SegmentSerializer { get; }
 			static public IndexesSerializer IndexesSerializer { get; }
 			static public StoredClassSerializer StoredClassSerializer { get; }
+			static public StudentSerializer StudentSerializer { get; }
 			static public DataSetMetaSerializer DataSetMetaSerializer { get; }
 			static public MetaSeriaizer MetaSeriaizer { get; }
 		}
@@ -334,6 +379,40 @@ namespace Devdeb.Storage.Test.DataSourceTests
 				};
 			}
 		}
+		public class StudentSerializer : Serializer<Student>
+		{
+			private readonly Int32Serializer _int32Serializer;
+			private readonly StringLengthSerializer _stringLengthSerializer;
+
+			public StudentSerializer()
+			{
+				_int32Serializer = new Int32Serializer();
+				_stringLengthSerializer = new StringLengthSerializer(Encoding.Default);
+			}
+
+			public override int Size(Student instance)
+			{
+				return _int32Serializer.Size * 2 + _stringLengthSerializer.Size(instance.Name);
+			}
+			public override void Serialize(Student instance, byte[] buffer, int offset)
+			{
+				_int32Serializer.Serialize(instance.Id, buffer, ref offset);
+				_stringLengthSerializer.Serialize(instance.Name, buffer, ref offset);
+				_int32Serializer.Serialize(instance.Age, buffer, offset);
+			}
+			public override Student Deserialize(byte[] buffer, int offset, int? count = null)
+			{
+				int id = _int32Serializer.Deserialize(buffer, ref offset);
+				string name = _stringLengthSerializer.Deserialize(buffer, ref offset);
+				int age = _int32Serializer.Deserialize(buffer, offset);
+				return new Student
+				{
+					Id = id,
+					Name = name,
+					Age = age
+				};
+			}
+		}
 		public class DataSetMetaSerializer : ConstantLengthSerializer<DataSetMeta>
 		{
 			public DataSetMetaSerializer() : base(Serializers.SegmentSerializer.Size) { }
@@ -352,18 +431,24 @@ namespace Devdeb.Storage.Test.DataSourceTests
 		}
 		public class MetaSeriaizer : ConstantLengthSerializer<Meta>
 		{
-			public MetaSeriaizer() : base(Serializers.DataSetMetaSerializer.Size) { }
+			public MetaSeriaizer() : base(Serializers.DataSetMetaSerializer.Size * 2) { }
 
 			public override void Serialize(Meta instance, byte[] buffer, int offset)
 			{
 				VerifySerialize(instance, buffer, offset);
-				Serializers.SegmentSerializer.Serialize(instance.StoredClassSetMetaPointer, buffer, offset);
+				Serializers.SegmentSerializer.Serialize(instance.StoredClassSetMetaPointer, buffer, ref offset);
+				Serializers.SegmentSerializer.Serialize(instance.StudentSetMetaPointer, buffer, offset);
 			}
 			public override Meta Deserialize(byte[] buffer, int offset)
 			{
 				VerifyDeserialize(buffer, offset);
-				Segment storedClassSetMeta = Serializers.SegmentSerializer.Deserialize(buffer, offset);
-				return new Meta { StoredClassSetMetaPointer = storedClassSetMeta };
+				Segment storedClassSetMeta = Serializers.SegmentSerializer.Deserialize(buffer, ref offset);
+				Segment studentSetMeta = Serializers.SegmentSerializer.Deserialize(buffer, offset);
+				return new Meta
+				{
+					StoredClassSetMetaPointer = storedClassSetMeta,
+					StudentSetMetaPointer = studentSetMeta
+				};
 			}
 		}
 		public class IndexesSerializer : Serializer<RedBlackTreeSurjection<int, Segment>>
