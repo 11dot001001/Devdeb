@@ -19,6 +19,8 @@ namespace Devdeb.Serialization
 		public abstract T Deserialize(byte[] buffer, int offset);
 
 		public int Size => _size;
+		public SerializerFlags Flags => _flags;
+
 		public T Deserialize(byte[] buffer, ref int offset)
 		{
 			try { return Deserialize(buffer, offset); }
