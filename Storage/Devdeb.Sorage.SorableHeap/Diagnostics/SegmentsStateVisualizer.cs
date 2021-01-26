@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using static Devdeb.Storage.StorableHeap;
+using static Devdeb.Sorage.SorableHeap.StorableHeap;
 
-namespace Devdeb.Storage.Diagnostics
+namespace Devdeb.Sorage.SorableHeap.Diagnostics
 {
 	public class SegmentsStateVisualizer
 	{

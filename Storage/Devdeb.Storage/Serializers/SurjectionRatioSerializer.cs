@@ -4,8 +4,8 @@ using System;
 
 namespace Devdeb.Storage.Serializers
 {
-	public class SurjectionRatioSerializer<TInput, TOutput> : ConstantLengthSerializer<SurjectionRatio<TInput, TOutput>>
-		where TInput : struct, IEquatable<TInput>
+	internal class SurjectionRatioSerializer<TInput, TOutput> : ConstantLengthSerializer<SurjectionRatio<TInput, TOutput>>
+		where TInput : struct
 		where TOutput : struct
 	{
 		private readonly IConstantLengthSerializer<TInput> _inputSerializer;

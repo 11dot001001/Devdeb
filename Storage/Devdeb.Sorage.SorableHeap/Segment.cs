@@ -1,4 +1,4 @@
-﻿namespace Devdeb.Storage
+﻿namespace Devdeb.Sorage.SorableHeap
 {
 	public struct Segment
 	{

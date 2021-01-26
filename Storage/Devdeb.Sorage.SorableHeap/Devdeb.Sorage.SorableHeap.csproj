@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
@@ -11,7 +11,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Serialization\Devdeb.Serialization\Devdeb.Serialization.csproj" />
     <ProjectReference Include="..\..\Sets\Devdeb.Sets\Devdeb.Sets.csproj" />
-    <ProjectReference Include="..\Devdeb.Sorage.SorableHeap\Devdeb.Sorage.SorableHeap.csproj" />
   </ItemGroup>
 
 </Project>

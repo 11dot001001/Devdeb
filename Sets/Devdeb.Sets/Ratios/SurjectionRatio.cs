@@ -2,7 +2,7 @@
 
 namespace Devdeb.Sets.Ratios
 {
-	public struct SurjectionRatio<TInput, TOutput> where TInput : IEquatable<TInput>
+	public struct SurjectionRatio<TInput, TOutput>
 	{
 		private readonly TInput _input;
 		private readonly TOutput _output;

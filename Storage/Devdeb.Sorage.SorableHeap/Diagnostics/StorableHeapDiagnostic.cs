@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace Devdeb.Storage.Diagnostics
+namespace Devdeb.Sorage.SorableHeap.Diagnostics
 {
 	public class StorableHeapDiagnostic
 	{

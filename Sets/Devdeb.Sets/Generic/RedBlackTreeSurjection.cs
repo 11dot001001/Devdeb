@@ -8,7 +8,6 @@ using System.Diagnostics;
 namespace Devdeb.Sets.Generic
 {
 	public class RedBlackTreeSurjection<TInput, TOutput> : IEnumerable<SurjectionRatio<TInput, TOutput>>
-		where TInput : IEquatable<TInput>
 	{
 		private struct Slot
 		{

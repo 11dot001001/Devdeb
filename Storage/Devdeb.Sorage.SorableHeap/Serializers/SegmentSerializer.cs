@@ -1,6 +1,6 @@
 ﻿using Devdeb.Serialization;
 
-namespace Devdeb.Storage.Serializers
+namespace Devdeb.Sorage.SorableHeap.Serializers
 {
 	public class SegmentSerializer : ConstantLengthSerializer<Segment>
 	{
