@@ -4,20 +4,24 @@ using Devdeb.Serialization.Serializers.System;
 using Devdeb.Sets.Generic;
 using Devdeb.Sets.Ratios;
 using Devdeb.Sorage.SorableHeap;
+using Devdeb.Sorage.SorableHeap.Serializers;
 using System.Linq;
 
 namespace Devdeb.Storage.Serializers
 {
-	internal class IndexesSerializer : Serializer<RedBlackTreeSurjection<int, Segment>>
+	internal sealed class IndexesSerializer : Serializer<RedBlackTreeSurjection<int, Segment>>
 	{
+		static IndexesSerializer() => Default = new IndexesSerializer();
+		public static IndexesSerializer Default { get; }
+
 		private readonly ArrayLengthSerializer<SurjectionRatio<int, Segment>> _arraySerializer;
 
 		public IndexesSerializer()
 		{
 			SurjectionRatioSerializer<int, Segment> indexSerializer = new SurjectionRatioSerializer<int, Segment>
 			(
-				new Int32Serializer(),
-				StorageSerializers.SegmentSerializer
+				Int32Serializer.Default,
+				SegmentSerializer.Default
 			);
 			_arraySerializer = new ArrayLengthSerializer<SurjectionRatio<int, Segment>>(indexSerializer);
 		}

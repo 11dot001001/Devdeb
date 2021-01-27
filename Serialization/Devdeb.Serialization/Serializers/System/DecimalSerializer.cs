@@ -1,7 +1,10 @@
 ﻿namespace Devdeb.Serialization.Serializers.System
 {
-	public class DecimalSerializer : ConstantLengthSerializer<decimal>
+	public sealed class DecimalSerializer : ConstantLengthSerializer<decimal>
 	{
+		static DecimalSerializer() => Default = new DecimalSerializer();
+		static public DecimalSerializer Default { get; }
+
 		public DecimalSerializer() : base(sizeof(decimal)) { }
 
 		public unsafe override void Serialize(decimal instance, byte[] buffer, int offset)

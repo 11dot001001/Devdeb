@@ -2,8 +2,11 @@
 
 namespace Devdeb.Serialization.Serializers.System
 {
-	public class TimeSpanSerializer : ConstantLengthSerializer<TimeSpan>
+	public sealed class TimeSpanSerializer : ConstantLengthSerializer<TimeSpan>
 	{
+		static TimeSpanSerializer() => Default = new TimeSpanSerializer();
+		static public TimeSpanSerializer Default { get; }
+
 		public TimeSpanSerializer() : base(8) { }
 
 		public unsafe override void Serialize(TimeSpan instance, byte[] buffer, int offset)

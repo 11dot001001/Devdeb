@@ -2,8 +2,11 @@
 
 namespace Devdeb.Serialization.Serializers.System
 {
-	public class GuidSerializer : ConstantLengthSerializer<Guid>
+	public sealed class GuidSerializer : ConstantLengthSerializer<Guid>
 	{
+		static GuidSerializer() => Default = new GuidSerializer();
+		static public GuidSerializer Default { get; }
+
 		public GuidSerializer() : base(16) { }
 
 		public unsafe override void Serialize(Guid instance, byte[] buffer, int offset)

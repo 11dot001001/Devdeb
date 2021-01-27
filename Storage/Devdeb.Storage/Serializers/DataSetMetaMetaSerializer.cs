@@ -1,29 +1,29 @@
 ﻿using Devdeb.Serialization;
-using Devdeb.Sorage.SorableHeap;
+using Devdeb.Serialization.Serializers.System;
+using Devdeb.Sorage.SorableHeap.Serializers;
 
 namespace Devdeb.Storage.Serializers
 {
-	internal class DataSetMetaMetaSerializer : ConstantLengthSerializer<Meta.DataSetMetaMeta>
+	internal sealed class DataSetMetaMetaSerializer : ConstantLengthSerializer<Meta.DataSetMetaMeta>
 	{
-		static private readonly int _size = StorageSerializers.Int32Serializer.Size + StorageSerializers.SegmentSerializer.Size;
+		static DataSetMetaMetaSerializer() => Default = new DataSetMetaMetaSerializer();
+		public static DataSetMetaMetaSerializer Default { get; }
 
-		public DataSetMetaMetaSerializer() : base(_size) { }
+		public DataSetMetaMetaSerializer() : base(Int32Serializer.Default.Size + SegmentSerializer.Default.Size) { }
 
 		public override void Serialize(Meta.DataSetMetaMeta instance, byte[] buffer, int offset)
 		{
 			VerifySerialize(instance, buffer, offset);
-			StorageSerializers.Int32Serializer.Serialize(instance.Id, buffer, ref offset);
-			StorageSerializers.SegmentSerializer.Serialize(instance.DataSetMetaPointer, buffer, offset);
+			Int32Serializer.Default.Serialize(instance.Id, buffer, ref offset);
+			SegmentSerializer.Default.Serialize(instance.DataSetMetaPointer, buffer, offset);
 		}
 		public override Meta.DataSetMetaMeta Deserialize(byte[] buffer, int offset)
 		{
 			VerifyDeserialize(buffer, offset);
-			int id = StorageSerializers.Int32Serializer.Deserialize(buffer, ref offset);
-			Segment dataSetMetaPointer = StorageSerializers.SegmentSerializer.Deserialize(buffer, offset);
 			return new Meta.DataSetMetaMeta
 			{
-				Id = id,
-				DataSetMetaPointer = dataSetMetaPointer
+				Id = Int32Serializer.Default.Deserialize(buffer, ref offset),
+				DataSetMetaPointer = SegmentSerializer.Default.Deserialize(buffer, offset)
 			};
 		}
 	}

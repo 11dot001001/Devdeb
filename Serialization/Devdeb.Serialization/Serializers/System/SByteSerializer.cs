@@ -1,7 +1,10 @@
 ﻿namespace Devdeb.Serialization.Serializers.System
 {
-	public class SByteSerializer : ConstantLengthSerializer<sbyte>
+	public sealed class SByteSerializer : ConstantLengthSerializer<sbyte>
 	{
+		static SByteSerializer() => Default = new SByteSerializer();
+		static public SByteSerializer Default { get; }
+
 		public SByteSerializer() : base(sizeof(sbyte)) { }
 
 		public unsafe override void Serialize(sbyte instance, byte[] buffer, int offset)

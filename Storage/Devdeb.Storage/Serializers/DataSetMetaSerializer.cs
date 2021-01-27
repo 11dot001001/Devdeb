@@ -1,22 +1,27 @@
 ﻿using Devdeb.Serialization;
-using Devdeb.Sorage.SorableHeap;
+using Devdeb.Sorage.SorableHeap.Serializers;
 
 namespace Devdeb.Storage.Serializers
 {
-	internal class DataSetMetaSerializer : ConstantLengthSerializer<DataSetMeta>
+	internal sealed class DataSetMetaSerializer : ConstantLengthSerializer<DataSetMeta>
 	{
-		public DataSetMetaSerializer() : base(StorageSerializers.SegmentSerializer.Size) { }
+		static DataSetMetaSerializer() => Default = new DataSetMetaSerializer();
+		public static DataSetMetaSerializer Default { get; }
+
+		public DataSetMetaSerializer() : base(SegmentSerializer.Default.Size) { }
 
 		public override void Serialize(DataSetMeta instance, byte[] buffer, int offset)
 		{
 			VerifySerialize(instance, buffer, offset);
-			StorageSerializers.SegmentSerializer.Serialize(instance.PrimaryIndexesPointer, buffer, offset);
+			SegmentSerializer.Default.Serialize(instance.PrimaryIndexesPointer, buffer, offset);
 		}
 		public override DataSetMeta Deserialize(byte[] buffer, int offset)
 		{
 			VerifyDeserialize(buffer, offset);
-			Segment indexesPointer = StorageSerializers.SegmentSerializer.Deserialize(buffer, offset);
-			return new DataSetMeta() { PrimaryIndexesPointer = indexesPointer };
+			return new DataSetMeta() 
+			{ 
+				PrimaryIndexesPointer = SegmentSerializer.Default.Deserialize(buffer, offset)
+			};
 		}
 	}
 }

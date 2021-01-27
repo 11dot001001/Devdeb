@@ -4,7 +4,7 @@ using System;
 
 namespace Devdeb.Serialization.Serializers
 {
-	public class ArrayLengthSerializer<T> : Serializer<T[]>
+	public sealed class ArrayLengthSerializer<T> : Serializer<T[]>
 	{
 		private readonly ArraySerializer<T> _arraySerializer;
 		private readonly Int32Serializer _int32Serializer;

@@ -1,7 +1,10 @@
 ﻿namespace Devdeb.Serialization.Serializers.System
 {
-	public class DoubleSerializer : ConstantLengthSerializer<double>
+	public sealed class DoubleSerializer : ConstantLengthSerializer<double>
 	{
+		static DoubleSerializer() => Default = new DoubleSerializer();
+		static public DoubleSerializer Default { get; }
+
 		public DoubleSerializer() : base(sizeof(double)) { }
 
 		public unsafe override void Serialize(double instance, byte[] buffer, int offset)

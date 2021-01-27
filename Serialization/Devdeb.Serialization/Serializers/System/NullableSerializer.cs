@@ -2,7 +2,7 @@
 
 namespace Devdeb.Serialization.Serializers.System
 {
-	public class NullableSerializer<T> : Serializer<T>
+	public sealed class NullableSerializer<T> : Serializer<T>
 	{
 		private readonly ISerializer<T> _elementSerializer;
 		private readonly BooleanSerializer _booleanSerializer;

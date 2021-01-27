@@ -2,7 +2,7 @@
 
 namespace Devdeb.Serialization.Serializers.System.Collections
 {
-	public class ArraySerializer<T> : Serializer<T[]>
+	public sealed class ArraySerializer<T> : Serializer<T[]>
 	{
 		private readonly ISerializer<T> _elementSerializer;
 

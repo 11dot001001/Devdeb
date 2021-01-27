@@ -24,7 +24,5 @@ namespace Devdeb.Sorage.SorableHeap.Diagnostics
 					Debug.Assert(pointers.Remove(segment));
 			Debug.Assert(pointers.Count == 0);
 		}
-
-		//Read data by segment, serializer.
 	}
 }

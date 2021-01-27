@@ -1,7 +1,10 @@
 ﻿namespace Devdeb.Serialization.Serializers.System
 {
-	public class BooleanSerializer : ConstantLengthSerializer<bool>
+	public sealed class BooleanSerializer : ConstantLengthSerializer<bool>
 	{
+		static BooleanSerializer() => Default = new BooleanSerializer();
+		static public BooleanSerializer Default { get; }
+
 		public BooleanSerializer() : base(sizeof(bool)) { }
 
 		public unsafe override void Serialize(bool instance, byte[] buffer, int offset)

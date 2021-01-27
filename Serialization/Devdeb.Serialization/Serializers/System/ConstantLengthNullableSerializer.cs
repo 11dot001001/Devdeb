@@ -2,7 +2,7 @@
 
 namespace Devdeb.Serialization.Serializers.System
 {
-	public class ConstantLengthNullableSerializer<T> : ConstantLengthSerializer<T?> where T : struct
+	public sealed class ConstantLengthNullableSerializer<T> : ConstantLengthSerializer<T?> where T : struct
 	{
 		private readonly IConstantLengthSerializer<T> _elementSerializer;
 		private readonly BooleanSerializer _booleanSerializer;

@@ -2,6 +2,9 @@
 {
 	public class CharSerializer : ConstantLengthSerializer<char>
 	{
+		static CharSerializer() => Default = new CharSerializer();
+		static public CharSerializer Default { get; }
+
 		public CharSerializer() : base(sizeof(char)) { }
 
 		public unsafe override void Serialize(char instance, byte[] buffer, int offset)

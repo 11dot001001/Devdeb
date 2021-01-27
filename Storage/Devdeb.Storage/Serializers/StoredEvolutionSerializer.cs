@@ -34,7 +34,7 @@ namespace Devdeb.Storage.Serializers
 			StoredType storedValue = _migrator.Convert(version, buffer, offset);
 			return new StoredEvolution<StoredType>
 			{
-				Version = version,
+				Version = _migrator.Version,
 				Data = storedValue
 			};
 		}

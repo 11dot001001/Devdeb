@@ -112,25 +112,19 @@ namespace Devdeb.Sorage.SorableHeap
 		private readonly SegmentsInformation _segments;
 		private readonly bool _isInitializationFirst;
 
-		private readonly Int32Serializer _int32Serializer;
-		private readonly SegmentSerializer _segmentSerializer;
 		private readonly ArrayLengthSerializer<Segment> _segmentArraySerializer;
 		private readonly SegmentsStateVisualizer _segmentsStateVisualizer;
 		private readonly StorableHeapDiagnostic _storableHeapDiagnostic;
 
 		public StorableHeap(DirectoryInfo heapDirectory, long maxHeapSize)
 		{
-			if (heapDirectory == null)
-				throw new ArgumentNullException(nameof(heapDirectory));
 			if (maxHeapSize <= 0)
 				throw new ArgumentOutOfRangeException(nameof(maxHeapSize));
 
-			_heapDirectory = heapDirectory;
+			_heapDirectory = heapDirectory ?? throw new ArgumentNullException(nameof(heapDirectory));
 			_maxHeapSize = maxHeapSize;
 			_currentHeapSizeLock = new object();
-			_int32Serializer = new Int32Serializer();
-			_segmentSerializer = new SegmentSerializer();
-			_segmentArraySerializer = new ArrayLengthSerializer<Segment>(_segmentSerializer);
+			_segmentArraySerializer = new ArrayLengthSerializer<Segment>(SegmentSerializer.Default);
 			_storableHeapDiagnostic = new StorableHeapDiagnostic(this);
 
 			if (TryLoadSegments(out Segment[] freeSegments, out Segment[] usedSegments))
@@ -160,7 +154,7 @@ namespace Devdeb.Sorage.SorableHeap
 				fileStream.WriteByte(0);
 				fileStream.Flush();
 				_isInitializationFirst = true;
-				Debug.Assert(AllocateMemory(_segmentSerializer.Size) == EntrySegment);
+				Debug.Assert(AllocateMemory(SegmentSerializer.Default.Size) == EntrySegment);
 			}
 		}
 
@@ -169,7 +163,7 @@ namespace Devdeb.Sorage.SorableHeap
 		public Segment EntrySegment => new Segment
 		{
 			Pointer = 0,
-			Size = _segmentSerializer.Size
+			Size = SegmentSerializer.Default.Size
 		};
 
 		protected string HeapFilePath => Path.Combine(_heapDirectory.FullName, HeapFileName);
@@ -368,9 +362,9 @@ namespace Devdeb.Sorage.SorableHeap
 				if (readCount != arrayLengthBytes.Length)
 					throw new Exception($"The number of bytes for array length read from the file doesn't match {nameof(arrayLengthBytes.Length)}");
 
-				int arrayLength = _int32Serializer.Deserialize(arrayLengthBytes, 0);
+				int arrayLength = Int32Serializer.Default.Deserialize(arrayLengthBytes, 0);
 
-				int arrayDataBytesCount = arrayLength * _segmentSerializer.Size;
+				int arrayDataBytesCount = arrayLength * SegmentSerializer.Default.Size;
 				byte[] buffer = new byte[arrayLengthSize + arrayDataBytesCount];
 				Array.Copy(arrayLengthBytes, 0, buffer, 0, arrayLengthBytes.Length);
 				readCount = fileStream.Read(buffer, arrayLengthSize, arrayDataBytesCount);

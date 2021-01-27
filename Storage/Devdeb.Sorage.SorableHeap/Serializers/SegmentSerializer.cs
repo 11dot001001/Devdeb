@@ -2,8 +2,11 @@
 
 namespace Devdeb.Sorage.SorableHeap.Serializers
 {
-	public class SegmentSerializer : ConstantLengthSerializer<Segment>
+	public sealed class SegmentSerializer : ConstantLengthSerializer<Segment>
 	{
+		static SegmentSerializer() => Default = new SegmentSerializer();
+		static public SegmentSerializer Default { get; }
+
 		public SegmentSerializer() : base(sizeof(long) * 2) { }
 
 		public unsafe override void Serialize(Segment instance, byte[] buffer, int offset)

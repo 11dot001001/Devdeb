@@ -1,7 +1,10 @@
 ﻿namespace Devdeb.Serialization.Serializers.System
 {
-	public class UInt32Serializer : ConstantLengthSerializer<uint>
+	public sealed class UInt32Serializer : ConstantLengthSerializer<uint>
 	{
+		static UInt32Serializer() => Default = new UInt32Serializer();
+		static public UInt32Serializer Default { get; }
+
 		public UInt32Serializer() : base(sizeof(uint)) { }
 
 		public unsafe override void Serialize(uint instance, byte[] buffer, int offset)

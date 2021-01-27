@@ -1,6 +1,8 @@
 ﻿using Devdeb.Serialization;
+using Devdeb.Serialization.Serializers.System;
 using Devdeb.Sets.Generic;
 using Devdeb.Sorage.SorableHeap;
+using Devdeb.Sorage.SorableHeap.Serializers;
 using Devdeb.Storage.Migrators;
 using Devdeb.Storage.Migrators.DataSource;
 using Devdeb.Storage.Serializers;
@@ -18,27 +20,41 @@ namespace Devdeb.Storage
 			public int Id { get; set; }
 			public Segment DataSetMetaPointer { get; set; }
 		}
+		internal class DataMetaMeta
+		{
+			public int Id { get; set; }
+			public Segment DataMetaPointer { get; set; }
+		}
 
 		public List<DataSetMetaMeta> DataSetsMetaPointers { get; set; }
+		public List<DataMetaMeta> DataMetaPointers { get; set; }
 	}
 	internal class DataSetMeta
 	{
 		public Segment PrimaryIndexesPointer { get; set; }
+	}
+	internal class DataMeta
+	{
+		public Segment DataPointer { get; set; }
 	}
 
 	public abstract class DataSource
 	{
 		static private readonly EntityMigrator<Meta> _metaMigrator;
 		static private readonly EntityMigrator<DataSetMeta> _dataSetMetaMigrator;
+		static private readonly EntityMigrator<DataMeta> _dataMetaMigrator;
 		static private readonly StoredEvolutionSerializer<Meta> _metaSerializer;
 		static private readonly StoredEvolutionSerializer<DataSetMeta> _dataSetMetaSerializer;
+		static private readonly StoredEvolutionSerializer<DataMeta> _dataMetaSerializer;
 
 		static DataSource()
 		{
 			_metaMigrator = new MetaMigrator();
 			_dataSetMetaMigrator = new DataSetMetaMigrator();
+			_dataMetaMigrator = new DataMetaMigrator();
 			_metaSerializer = new StoredEvolutionSerializer<Meta>(_metaMigrator);
 			_dataSetMetaSerializer = new StoredEvolutionSerializer<DataSetMeta>(_dataSetMetaMigrator);
+			_dataMetaSerializer = new StoredEvolutionSerializer<DataMeta>(_dataMetaMigrator);
 		}
 
 		private readonly StorableHeap _storableHeap;
@@ -61,6 +77,18 @@ namespace Devdeb.Storage
 				isCreate = true;
 			}
 			return InitializeDataSet(isCreate, InitializeDataSetMeta(isCreate, instance), entityMigrator);
+		}
+		protected Data<T> InitializeData<T>(int dataId, EntityMigrator<T> entityMigrator)
+		{
+			Meta.DataMetaMeta instance = _meta.Value.Data.DataMetaPointers.FirstOrDefault(x => x.Id == dataId);
+			bool isCreate = false;
+			if (instance == null)
+			{
+				instance = new Meta.DataMetaMeta { Id = dataId };
+				_meta.Value.Data.DataMetaPointers.Add(instance);
+				isCreate = true;
+			}
+			return InitializeData(isCreate, InitializeDataMeta(isCreate, instance), entityMigrator);
 		}
 
 		internal StoredReference<T> Initialize<T>(T data, ISerializer<T> serializer)
@@ -107,16 +135,20 @@ namespace Devdeb.Storage
 					StoredEvolution<Meta> instance = new StoredEvolution<Meta>
 					{
 						Version = _metaMigrator.Version,
-						Data = new Meta() { DataSetsMetaPointers = new List<Meta.DataSetMetaMeta>() }
+						Data = new Meta()
+						{
+							DataSetsMetaPointers = new List<Meta.DataSetMetaMeta>(),
+							DataMetaPointers = new List<Meta.DataMetaMeta>()
+						}
 					};
 					meta = Initialize(instance, _metaSerializer);
 					uploadMetaPointer(meta.Pointer);
 					return meta;
 				}
 
-				byte[] buffer = new byte[StorageSerializers.SegmentSerializer.Size];
+				byte[] buffer = new byte[SegmentSerializer.Default.Size];
 				_storableHeap.ReadBytes(_storableHeap.EntrySegment, buffer, 0, buffer.Length);
-				Segment metaPointer = StorageSerializers.SegmentSerializer.Deserialize(buffer, 0);
+				Segment metaPointer = SegmentSerializer.Default.Deserialize(buffer, 0);
 				meta = Load(metaPointer, _metaSerializer);
 				return meta;
 			}
@@ -124,8 +156,8 @@ namespace Devdeb.Storage
 
 			void uploadMetaPointer(Segment metaPointer)
 			{
-				byte[] buffer = new byte[StorageSerializers.SegmentSerializer.Size];
-				StorageSerializers.SegmentSerializer.Serialize(metaPointer, buffer, 0);
+				byte[] buffer = new byte[SegmentSerializer.Default.Size];
+				SegmentSerializer.Default.Serialize(metaPointer, buffer, 0);
 				_storableHeap.Write(_storableHeap.EntrySegment, buffer, 0, buffer.Length);
 			}
 		}
@@ -157,6 +189,34 @@ namespace Devdeb.Storage
 				Upload(_meta);
 			}
 		}
+		private unsafe StoredReference<StoredEvolution<DataMeta>> InitializeDataMeta(bool isCreate, Meta.DataMetaMeta dataMetaMeta)
+		{
+			Debug.Assert(_meta != default);
+			StoredReference<StoredEvolution<DataMeta>> dataMeta = null;
+			try
+			{
+				if (isCreate)
+				{
+					StoredEvolution<DataMeta> instance = new StoredEvolution<DataMeta>()
+					{
+						Version = _dataSetMetaMigrator.Version,
+						Data = new DataMeta()
+					};
+					dataMeta = Initialize(instance, _dataMetaSerializer);
+					uploadStoredClassDataSetPointer(dataMeta.Pointer);
+					return dataMeta;
+				}
+				dataMeta = Load(dataMetaMeta.DataMetaPointer, _dataMetaSerializer);
+				return dataMeta;
+			}
+			finally { dataMeta.PointerUpdated += (_, pointer) => uploadStoredClassDataSetPointer(pointer); }
+
+			void uploadStoredClassDataSetPointer(Segment pointer)
+			{
+				dataMetaMeta.DataMetaPointer = pointer;
+				Upload(_meta);
+			}
+		}
 		private DataSet<T> InitializeDataSet<T>(bool isCreate, StoredReference<StoredEvolution<DataSetMeta>> dataSetMeta, EntityMigrator<T> entityMigrator)
 		{
 			Debug.Assert(dataSetMeta != default);
@@ -164,11 +224,11 @@ namespace Devdeb.Storage
 
 			if (isCreate)
 			{
-				primaryIndexes = Initialize(new RedBlackTreeSurjection<int, Segment>(), StorageSerializers.IndexesSerializer);
+				primaryIndexes = Initialize(new RedBlackTreeSurjection<int, Segment>(), IndexesSerializer.Default);
 				uploadPrimaryIndexesPointer(primaryIndexes.Pointer);
 			}
 			else
-				primaryIndexes = Load(dataSetMeta.Value.Data.PrimaryIndexesPointer, StorageSerializers.IndexesSerializer);
+				primaryIndexes = Load(dataSetMeta.Value.Data.PrimaryIndexesPointer, IndexesSerializer.Default);
 
 			primaryIndexes.PointerUpdated += (_, pointer) => uploadPrimaryIndexesPointer(pointer);
 			return new DataSet<T>(_storableHeap, this, primaryIndexes, entityMigrator);
@@ -177,6 +237,30 @@ namespace Devdeb.Storage
 			{
 				dataSetMeta.Value.Data.PrimaryIndexesPointer = pointer;
 				Upload(dataSetMeta);
+			}
+		}
+		private Data<T> InitializeData<T>(bool isCreate, StoredReference<StoredEvolution<DataMeta>> dataMeta, EntityMigrator<T> entityMigrator)
+		{
+			Debug.Assert(dataMeta != default);
+			StoredReference<StoredEvolution<T>> instance = null;
+			StoredEvolutionSerializer<T> evolutionSerializer = new StoredEvolutionSerializer<T>(entityMigrator);
+			NullableSerializer<StoredEvolution<T>> nullableSerializer = new NullableSerializer<StoredEvolution<T>>(evolutionSerializer);
+
+			if (isCreate)
+			{
+				instance = Initialize(default, nullableSerializer);
+				uploadPrimaryIndexesPointer(instance.Pointer);
+			}
+			else
+				instance = Load(dataMeta.Value.Data.DataPointer, nullableSerializer);
+
+			instance.PointerUpdated += (_, pointer) => uploadPrimaryIndexesPointer(pointer);
+			return new Data<T>(this, instance, entityMigrator);
+
+			void uploadPrimaryIndexesPointer(Segment pointer)
+			{
+				dataMeta.Value.Data.DataPointer = pointer;
+				Upload(dataMeta);
 			}
 		}
 	}

@@ -1,7 +1,10 @@
 ﻿namespace Devdeb.Serialization.Serializers.System
 {
-	public class Int16Serializer : ConstantLengthSerializer<short>
+	public sealed class Int16Serializer : ConstantLengthSerializer<short>
 	{
+		static Int16Serializer() => Default = new Int16Serializer();
+		static public Int16Serializer Default { get; }
+
 		public Int16Serializer() : base(sizeof(short)) { }
 
 		public unsafe override void Serialize(short instance, byte[] buffer, int offset)

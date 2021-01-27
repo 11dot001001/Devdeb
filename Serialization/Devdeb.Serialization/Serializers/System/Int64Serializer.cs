@@ -1,7 +1,10 @@
 ﻿namespace Devdeb.Serialization.Serializers.System
 {
-	public class Int64Serializer : ConstantLengthSerializer<long>
+	public sealed class Int64Serializer : ConstantLengthSerializer<long>
 	{
+		static Int64Serializer() => Default = new Int64Serializer();
+		static public Int64Serializer Default { get; }
+
 		public Int64Serializer() : base(sizeof(long)) { }
 
 		public unsafe override void Serialize(long instance, byte[] buffer, int offset)

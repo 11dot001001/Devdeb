@@ -1,7 +1,10 @@
 ﻿namespace Devdeb.Serialization.Serializers.System
 {
-	public class SingleSerializer : ConstantLengthSerializer<float>
+	public sealed class SingleSerializer : ConstantLengthSerializer<float>
 	{
+		static SingleSerializer() => Default = new SingleSerializer();
+		static public SingleSerializer Default { get; }
+
 		public SingleSerializer() : base(sizeof(float)) { }
 
 		public unsafe override void Serialize(float instance, byte[] buffer, int offset)

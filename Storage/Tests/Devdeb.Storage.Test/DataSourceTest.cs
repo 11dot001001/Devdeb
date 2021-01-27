@@ -1,15 +1,8 @@
 ﻿using Devdeb.Serialization;
 using Devdeb.Serialization.Serializers;
 using Devdeb.Serialization.Serializers.System;
-using Devdeb.Sets.Generic;
-using Devdeb.Sets.Ratios;
 using Devdeb.Storage.Migrators;
-using Devdeb.Storage.Serializers;
-using System;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 
 namespace Devdeb.Storage.Test.DataSourceTests
 {
@@ -81,18 +74,27 @@ namespace Devdeb.Storage.Test.DataSourceTests
 			studentSet.Add(student1.Id, student1);
 			studentSet.Add(student2.Id, student2);
 			Student[] endStudents = studentSet.GetAll();
+
+			bool isMainSudentConatins = dataContext.MainSudent.Contains();
+			bool a = dataContext.MainSudent.Add(student1);
+			var get1 = dataContext.MainSudent.Get();
+			dataContext.MainSudent.Remove();
+			var get2 = dataContext.MainSudent.Get();
+			bool isMainSudentConatins2 = dataContext.MainSudent.Contains();
 		}
 
 		public class DataContext : DataSource
 		{
-			public DataContext(DirectoryInfo heapDirectory, long maxHeapSize) : base(heapDirectory, maxHeapSize) 
+			public DataContext(DirectoryInfo heapDirectory, long maxHeapSize) : base(heapDirectory, maxHeapSize)
 			{
 				Students = InitializeDataSet(1, new StudentMigrator());
 				StoredClasses = InitializeDataSet(2, new StoredClassMigrator());
+				MainSudent = InitializeData(1, new StudentMigrator());
 			}
 
 			public DataSet<Student> Students { get; }
 			public DataSet<StoredClass> StoredClasses { get; }
+			public Data<Student> MainSudent { get; }
 		}
 
 		public class StoredClass
@@ -142,121 +144,89 @@ namespace Devdeb.Storage.Test.DataSourceTests
 		{
 			static Serializers()
 			{
-				Int32Serializer = new Int32Serializer();
 				StoredClassSerializer = new StoredClassSerializer();
 				Student1Serializer = new Student1Serializer();
 				StudentSerializer = new StudentSerializer();
 			}
 
-			static public Int32Serializer Int32Serializer { get; }
 			static public StoredClassSerializer StoredClassSerializer { get; }
 			static public Student1Serializer Student1Serializer { get; }
 			static public StudentSerializer StudentSerializer { get; }
 		}
 		public class Student1Serializer : Serializer<Student1>
 		{
-			private readonly Int32Serializer _int32Serializer;
-			private readonly StringLengthSerializer _stringLengthSerializer;
-
-			public Student1Serializer()
-			{
-				_int32Serializer = new Int32Serializer();
-				_stringLengthSerializer = new StringLengthSerializer(Encoding.Default);
-			}
-
 			public override int Size(Student1 instance)
 			{
-				return _int32Serializer.Size * 2 + _stringLengthSerializer.Size(instance.Name);
+				VerifySize(instance);
+				return Int32Serializer.Default.Size * 2 + StringLengthSerializer.Default.Size(instance.Name);
 			}
 			public override void Serialize(Student1 instance, byte[] buffer, int offset)
 			{
-				_int32Serializer.Serialize(instance.Id, buffer, ref offset);
-				_stringLengthSerializer.Serialize(instance.Name, buffer, ref offset);
-				_int32Serializer.Serialize(instance.Age, buffer, offset);
+				VerifySerialize(instance, buffer, offset);
+				Int32Serializer.Default.Serialize(instance.Id, buffer, ref offset);
+				StringLengthSerializer.Default.Serialize(instance.Name, buffer, ref offset);
+				Int32Serializer.Default.Serialize(instance.Age, buffer, offset);
 			}
 			public override Student1 Deserialize(byte[] buffer, int offset, int? count = null)
 			{
-				int id = _int32Serializer.Deserialize(buffer, ref offset);
-				string name = _stringLengthSerializer.Deserialize(buffer, ref offset);
-				int age = _int32Serializer.Deserialize(buffer, offset);
+				VerifyDeserialize(buffer, offset, count);
 				return new Student1
 				{
-					Id = id,
-					Name = name,
-					Age = age
+					Id = Int32Serializer.Default.Deserialize(buffer, ref offset),
+					Name = StringLengthSerializer.Default.Deserialize(buffer, ref offset),
+					Age = Int32Serializer.Default.Deserialize(buffer, offset)
 				};
 			}
 		}
 		public class StudentSerializer : Serializer<Student>
 		{
-			private readonly Int32Serializer _int32Serializer;
-			private readonly StringLengthSerializer _stringLengthSerializer;
-
-			public StudentSerializer()
-			{
-				_int32Serializer = new Int32Serializer();
-				_stringLengthSerializer = new StringLengthSerializer(Encoding.Default);
-			}
-
 			public override int Size(Student instance)
 			{
-				return _int32Serializer.Size * 2 +
-					   _stringLengthSerializer.Size(instance.Name) +
-					  _stringLengthSerializer.Size(instance.Degree);
+				VerifySize(instance);
+				return Int32Serializer.Default.Size * 2 +
+					   StringLengthSerializer.Default.Size(instance.Name) +
+					  StringLengthSerializer.Default.Size(instance.Degree);
 			}
 			public override void Serialize(Student instance, byte[] buffer, int offset)
 			{
-				_int32Serializer.Serialize(instance.Id, buffer, ref offset);
-				_stringLengthSerializer.Serialize(instance.Name, buffer, ref offset);
-				_int32Serializer.Serialize(instance.Age, buffer, ref offset);
-				_stringLengthSerializer.Serialize(instance.Degree, buffer, offset);
+				VerifySerialize(instance, buffer, offset);
+				Int32Serializer.Default.Serialize(instance.Id, buffer, ref offset);
+				StringLengthSerializer.Default.Serialize(instance.Name, buffer, ref offset);
+				Int32Serializer.Default.Serialize(instance.Age, buffer, ref offset);
+				StringLengthSerializer.Default.Serialize(instance.Degree, buffer, offset);
 			}
 			public override Student Deserialize(byte[] buffer, int offset, int? count = null)
 			{
-				int id = _int32Serializer.Deserialize(buffer, ref offset);
-				string name = _stringLengthSerializer.Deserialize(buffer, ref offset);
-				int age = _int32Serializer.Deserialize(buffer, ref offset);
-				string degree = _stringLengthSerializer.Deserialize(buffer, ref offset);
+				VerifyDeserialize(buffer, offset, count);
 				return new Student
 				{
-					Id = id,
-					Name = name,
-					Age = age,
-					Degree = degree
+					Id = Int32Serializer.Default.Deserialize(buffer, ref offset),
+					Name = StringLengthSerializer.Default.Deserialize(buffer, ref offset),
+					Age = Int32Serializer.Default.Deserialize(buffer, ref offset),
+					Degree = StringLengthSerializer.Default.Deserialize(buffer, ref offset)
 				};
 			}
 		}
 		public class StoredClassSerializer : Serializer<StoredClass>
 		{
-			private readonly Int32Serializer _int32Serializer;
-			private readonly StringLengthSerializer _stringLengthSerializer;
-
-			public StoredClassSerializer()
-			{
-				_int32Serializer = new Int32Serializer();
-				_stringLengthSerializer = new StringLengthSerializer(Encoding.Default);
-			}
-
 			public override int Size(StoredClass instance)
 			{
 				VerifySize(instance);
-				return _int32Serializer.Size + _stringLengthSerializer.Size(instance.Value);
+				return Int32Serializer.Default.Size + StringLengthSerializer.Default.Size(instance.Value);
 			}
 			public override void Serialize(StoredClass instance, byte[] buffer, int offset)
 			{
 				VerifySerialize(instance, buffer, offset);
-				_int32Serializer.Serialize(instance.Id, buffer, ref offset);
-				_stringLengthSerializer.Serialize(instance.Value, buffer, offset);
+				Int32Serializer.Default.Serialize(instance.Id, buffer, ref offset);
+				StringLengthSerializer.Default.Serialize(instance.Value, buffer, offset);
 			}
 			public override StoredClass Deserialize(byte[] buffer, int offset, int? count = null)
 			{
 				VerifyDeserialize(buffer, offset, count);
-				int id = _int32Serializer.Deserialize(buffer, ref offset);
-				string value = _stringLengthSerializer.Deserialize(buffer, offset);
 				return new StoredClass
 				{
-					Id = id,
-					Value = value
+					Id = Int32Serializer.Default.Deserialize(buffer, ref offset),
+					Value = StringLengthSerializer.Default.Deserialize(buffer, offset)
 				};
 			}
 		}

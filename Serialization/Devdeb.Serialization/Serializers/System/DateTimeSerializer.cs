@@ -2,8 +2,11 @@
 
 namespace Devdeb.Serialization.Serializers.System
 {
-	public class DateTimeSerializer : ConstantLengthSerializer<DateTime>
+	public sealed class DateTimeSerializer : ConstantLengthSerializer<DateTime>
 	{
+		static DateTimeSerializer() => Default = new DateTimeSerializer();
+		static public DateTimeSerializer Default { get; }
+
 		public DateTimeSerializer() : base(8) { }
 
 		public unsafe override void Serialize(DateTime instance, byte[] buffer, int offset)

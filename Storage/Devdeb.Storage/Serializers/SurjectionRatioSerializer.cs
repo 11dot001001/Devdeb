@@ -4,7 +4,7 @@ using System;
 
 namespace Devdeb.Storage.Serializers
 {
-	internal class SurjectionRatioSerializer<TInput, TOutput> : ConstantLengthSerializer<SurjectionRatio<TInput, TOutput>>
+	internal sealed class SurjectionRatioSerializer<TInput, TOutput> : ConstantLengthSerializer<SurjectionRatio<TInput, TOutput>>
 		where TInput : struct
 		where TOutput : struct
 	{
