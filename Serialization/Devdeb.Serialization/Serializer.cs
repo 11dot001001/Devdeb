@@ -12,8 +12,8 @@ namespace Devdeb.Serialization
 		public SerializerFlags Flags => _flags;
 
 		public abstract int Size(T instance);
-		public abstract T Deserialize(byte[] buffer, int offset, int? count = null);
 		public abstract void Serialize(T instance, byte[] buffer, int offset);
+		public abstract T Deserialize(byte[] buffer, int offset, int? count = null);
 
 		public T Deserialize(byte[] buffer, ref int offset, int? count = null)
 		{
