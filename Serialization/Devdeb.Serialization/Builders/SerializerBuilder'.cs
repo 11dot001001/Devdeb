@@ -9,6 +9,29 @@ namespace Devdeb.Serialization.Builders
 {
 	public class SerializerBuilder<T>
 	{
+		static internal bool MemberSelectionPredicate(MemberInfo memberInfo)
+		{
+			if (memberInfo == null)
+				return false;
+			if (memberInfo.DeclaringType != typeof(T))
+				return false;
+			if (memberInfo is FieldInfo fieldInfo)
+			{
+				if (!fieldInfo.IsPublic)
+					return false;
+			}
+			else if (memberInfo is PropertyInfo propertyInfo)
+			{
+				if (!propertyInfo.CanRead || !propertyInfo.CanWrite)
+					return false;
+				if (!propertyInfo.GetMethod.IsPublic || !propertyInfo.SetMethod.IsPublic)
+					return false;
+			}
+			else
+				return false;
+			return true;
+		}
+
 		private readonly Type _serializationType;
 		private List<MemberSerializaionInfo> _memberSerializaionInfos;
 		private SerializerFlags _serializerFlags;
@@ -16,9 +39,21 @@ namespace Devdeb.Serialization.Builders
 		public SerializerBuilder()
 		{
 			_serializationType = typeof(T);
-			//check type on default .ctor
+			VerifyAccessModifier(_serializationType);
 			_memberSerializaionInfos = new List<MemberSerializaionInfo>();
 			_serializerFlags = SerializerFlags.Empty;
+		}
+
+		public ISerializer<T> Build()
+		{
+			if (_memberSerializaionInfos.Count == 0)
+				throw new Exception("No serialize members specified.");
+			return SerializerBuilder.Build<T>(new TypeSerializationInfo
+			(
+				_serializationType,
+				_memberSerializaionInfos.ToArray(),
+				_serializerFlags
+			));
 		}
 
 		public void AddMember<TMember>(Expression<Func<T, TMember>> expression, ISerializer<TMember> memberSerializer)
@@ -30,29 +65,9 @@ namespace Devdeb.Serialization.Builders
 		public void AddMember<TMember>(Expression<Func<T, TMember>> expression) => AddMember(expression, DefaultSerializer<TMember>.Instance);
 		internal void AddMember(MemberInfo memberInfo)
 		{
-			if (memberInfo == null)
-				throw new ArgumentNullException(nameof(memberInfo));
-			if (memberInfo.DeclaringType != _serializationType)
-				throw new Exception($"The specified member must belong to declaring type: {_serializationType}.");
+			VerifyMemberInfo(memberInfo);
 
-			Type memberType;
-			if (memberInfo is FieldInfo fieldInfo)
-			{
-				if (!fieldInfo.IsPublic)
-					throw new Exception($"The field {fieldInfo.FieldType.Name} is not public.");
-				memberType = fieldInfo.FieldType;
-			}
-			else if (memberInfo is PropertyInfo propertyInfo)
-			{
-				if (!propertyInfo.CanRead)
-					throw new Exception($"The property {propertyInfo.PropertyType.Name} is not readable.");
-				if (!propertyInfo.CanWrite)
-					throw new Exception($"The property {propertyInfo.PropertyType.Name} is not writable.");
-				memberType = propertyInfo.PropertyType;
-			}
-			else
-				throw new Exception($"The {memberInfo.Name} is not field or property.");
-
+			Type memberType = GetFieldOrPropertyType(memberInfo);
 			Type defaultSerializer = typeof(DefaultSerializer<>).MakeGenericType(new[] { memberType });
 			PropertyInfo instanceProperty = defaultSerializer.GetProperty(nameof(DefaultSerializer<object>.Instance));
 			object serializer = instanceProperty.GetMethod.Invoke(null, null);
@@ -67,24 +82,53 @@ namespace Devdeb.Serialization.Builders
 				throw new ArgumentNullException(nameof(expression));
 			if (!(expression.Body is MemberExpression memberExpression))
 				throw new Exception("The specified member must be field or property.");
-			if (memberExpression.Member.DeclaringType != _serializationType)
-				throw new Exception($"The specified member must belong to declaring type: {_serializationType}.");
-			if (memberExpression.Member is PropertyInfo propertyInfo)
-			{
-				//check consists whether public get and set methods. Also public access modifier for fields.
-			}
+			VerifyMemberInfo(memberExpression.Member);
 		}
-
-		public ISerializer<T> Build()
+		private void VerifyMemberInfo(MemberInfo memberInfo)
 		{
-			if (_memberSerializaionInfos.Count == 0)
-				throw new Exception("No serialize members specified.");
-			return SerializerBuilder.Build<T>(new TypeSerializationInfo
-			(
-				_serializationType,
-				_memberSerializaionInfos.ToArray(),
-				_serializerFlags
-			));
+			if (memberInfo == null)
+				throw new ArgumentNullException(nameof(memberInfo));
+			if (memberInfo.DeclaringType != _serializationType)
+				throw new Exception($"The specified member must belong to declaring type: {_serializationType}.");
+			if (memberInfo is FieldInfo fieldInfo)
+			{
+				if (!fieldInfo.IsPublic)
+					throw new Exception($"The field {fieldInfo.FieldType.Name} is not public.");
+			}
+			else if (memberInfo is PropertyInfo propertyInfo)
+			{
+				if (!propertyInfo.CanRead)
+					throw new Exception($"The property {propertyInfo.PropertyType.Name} is not readable.");
+				if (!propertyInfo.GetMethod.IsPublic)
+					throw new Exception($"The property {propertyInfo.PropertyType.Name} doesn't have public get method.");
+				if (!propertyInfo.CanWrite)
+					throw new Exception($"The property {propertyInfo.PropertyType.Name} is not writable.");
+				if (!propertyInfo.SetMethod.IsPublic)
+					throw new Exception($"The property {propertyInfo.PropertyType.Name} doesn't have public set method.");
+			}
+			else
+				throw new Exception($"The {memberInfo} is not field or property.");
+		}
+		private void VerifyAccessModifier(Type type)
+		{
+			if (type.IsPublic)
+				return;
+			if (type.IsNestedPublic)
+			{
+				VerifyAccessModifier(type.DeclaringType);
+				return;
+			}
+			throw new Exception($"The serialization type {_serializationType.FullName} must be in hierarchy public or nested public types.");
+		}
+		
+		private Type GetFieldOrPropertyType(MemberInfo memberInfo)
+		{
+			if (memberInfo is FieldInfo fieldInfo)
+				return fieldInfo.FieldType;
+			else if (memberInfo is PropertyInfo propertyInfo)
+				return propertyInfo.PropertyType;
+			else
+				throw new Exception($"The {memberInfo} is not field or property.");
 		}
 	}
 }
