@@ -1,15 +1,15 @@
 ﻿using Devdeb.Serialization.Serializers;
 using Devdeb.Serialization.Serializers.System;
 using Devdeb.Sets.Generic;
-using Devdeb.Sorage.SorableHeap.Diagnostics;
-using Devdeb.Sorage.SorableHeap.Serializers;
+using Devdeb.Storage.Heap.Diagnostics;
+using Devdeb.Storage.Heap.Serializers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace Devdeb.Sorage.SorableHeap
+namespace Devdeb.Storage.Heap
 {
 	public class StorableHeap
 	{

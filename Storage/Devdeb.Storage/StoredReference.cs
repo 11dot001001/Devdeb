@@ -1,5 +1,5 @@
 ﻿using Devdeb.Serialization;
-using Devdeb.Sorage.SorableHeap;
+using Devdeb.Storage.Heap;
 using System;
 
 namespace Devdeb.Storage

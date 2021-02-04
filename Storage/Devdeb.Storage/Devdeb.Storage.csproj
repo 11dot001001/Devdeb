@@ -11,7 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Serialization\Devdeb.Serialization\Devdeb.Serialization.csproj" />
     <ProjectReference Include="..\..\Sets\Devdeb.Sets\Devdeb.Sets.csproj" />
-    <ProjectReference Include="..\Devdeb.Sorage.SorableHeap\Devdeb.Sorage.SorableHeap.csproj" />
-  </ItemGroup>
+    <ProjectReference Include="..\Devdeb.Storage.Heap\Devdeb.Storage.Heap.csproj" />
+	</ItemGroup>
 
 </Project>

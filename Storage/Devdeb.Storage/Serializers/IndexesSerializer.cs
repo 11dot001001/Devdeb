@@ -3,8 +3,8 @@ using Devdeb.Serialization.Serializers;
 using Devdeb.Serialization.Serializers.System;
 using Devdeb.Sets.Generic;
 using Devdeb.Sets.Ratios;
-using Devdeb.Sorage.SorableHeap;
-using Devdeb.Sorage.SorableHeap.Serializers;
+using Devdeb.Storage.Heap;
+using Devdeb.Storage.Heap.Serializers;
 using System.Linq;
 
 namespace Devdeb.Storage.Serializers

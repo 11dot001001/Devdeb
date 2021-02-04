@@ -56,13 +56,14 @@ namespace Devdeb.Serialization.Builders
 			));
 		}
 
-		public void AddMember<TMember>(Expression<Func<T, TMember>> expression, ISerializer<TMember> memberSerializer)
+		public SerializerBuilder<T> AddMember<TMember>(Expression<Func<T, TMember>> expression, ISerializer<TMember> memberSerializer)
 		{
 			VerifyMemberExpression(expression);
 			MemberExpression memberExpression = expression.Body as MemberExpression;
 			_memberSerializaionInfos.Add(new MemberSerializaionInfo(memberExpression.Member, memberSerializer));
+			return this;
 		}
-		public void AddMember<TMember>(Expression<Func<T, TMember>> expression) => AddMember(expression, DefaultSerializer<TMember>.Instance);
+		public SerializerBuilder<T> AddMember<TMember>(Expression<Func<T, TMember>> expression) => AddMember(expression, DefaultSerializer<TMember>.Instance);
 		internal void AddMember(MemberInfo memberInfo)
 		{
 			VerifyMemberInfo(memberInfo);

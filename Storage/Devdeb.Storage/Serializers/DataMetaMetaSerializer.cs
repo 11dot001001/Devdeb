@@ -1,6 +1,6 @@
 ﻿using Devdeb.Serialization;
 using Devdeb.Serialization.Serializers.System;
-using Devdeb.Sorage.SorableHeap.Serializers;
+using Devdeb.Storage.Heap.Serializers;
 
 namespace Devdeb.Storage.Serializers
 {
