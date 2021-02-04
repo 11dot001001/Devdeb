@@ -2,6 +2,7 @@
 using Devdeb.Serialization.Default;
 using Devdeb.Serialization.Serializers;
 using Devdeb.Serialization.Serializers.System;
+using System.Collections.Generic;
 
 namespace Devdeb.Serialization.Tests
 {
@@ -9,8 +10,12 @@ namespace Devdeb.Serialization.Tests
 	{
 		public void Test()
 		{
+			ISerializer<TestClass[]> serializer1 = DefaultSerializer<TestClass[]>.Instance;
+			ISerializer<int?[]> serializer2 = DefaultSerializer<int?[]>.Instance;
+			ISerializer<IEnumerable<int>> serializer3 = DefaultSerializer<IEnumerable<int>>.Instance;
+			ISerializer<int[]> serializer4 = DefaultSerializer<int[]>.Instance;
 			ISerializer<TestClass> serializer = DefaultSerializer<TestClass>.Instance;
-			
+
 			TestClass testClass = new TestClass
 			{
 				IntValue = 15,
