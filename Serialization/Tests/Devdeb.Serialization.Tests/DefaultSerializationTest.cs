@@ -19,7 +19,8 @@ namespace Devdeb.Serialization.Tests
 			TestClass testClass = new TestClass
 			{
 				IntValue = 15,
-				StringValue = "Some string"
+				StringValue = "Some string",
+				Gender = Gender.Female
 			};
 
 			byte[] buffer = new byte[serializer.Size(testClass)];
@@ -52,8 +53,14 @@ namespace Devdeb.Serialization.Tests
 			public int IntValue2;
 			public int IntValue { get; set; }
 			public string StringValue { get; set; }
+			public Gender Gender { get; set; }
 
 			public void AddTest() { }
+		}
+		public enum Gender : byte
+		{
+			Male = 1,
+			Female = 2
 		}
 	}
 }

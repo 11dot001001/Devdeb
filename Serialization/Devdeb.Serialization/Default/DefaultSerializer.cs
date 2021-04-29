@@ -21,6 +21,17 @@ namespace Devdeb.Serialization.Default
 				return;
 			}
 
+			#region Enum
+			if(serializationType.IsEnum)
+			{
+                Type underlyingType = Enum.GetUnderlyingType(serializationType);
+                object underlyingTypeSerializer = GetSerializer(underlyingType);
+
+                Type enumSerializerType = typeof(EnumSerializer<,>).MakeGenericType(new[] { serializationType, underlyingType });
+				_serializer = (ISerializer<T>)Activator.CreateInstance(enumSerializerType, new[] { underlyingTypeSerializer });
+				return;
+			}
+			#endregion
 			#region Nullable<T>
 			Type elementType = Nullable.GetUnderlyingType(serializationType);
 			if (elementType != null && elementType.IsValueType)
@@ -53,16 +64,21 @@ namespace Devdeb.Serialization.Default
 
 		static public ISerializer<T> Instance => _serializer;
 
+		static private object GetSerializer(Type serializationType)
+		{
+			if (!DefaultSerializersStorage.TryGetSerializer(serializationType, out object serializer))
+			{
+				Type serializerType = typeof(DefaultSerializer<>).MakeGenericType(new[] { serializationType });
+				serializer = serializerType.GetProperty(nameof(DefaultSerializer<object>.Instance)).GetMethod.Invoke(null, null);
+			}
+			if (serializer == null)
+				throw new Exception($"Default serializer for type {serializationType} wasn't found.");
+
+			return serializer;
+		}
 		static private ISerializer<T> GetGenericSerializer(Type genericParameterType, Type genericSerializerType)
 		{
-			if (!DefaultSerializersStorage.TryGetSerializer(genericParameterType, out object elementSerializer))
-			{
-				Type elementSerializerType = typeof(DefaultSerializer<>).MakeGenericType(new[] { genericParameterType });
-				elementSerializer = elementSerializerType.GetProperty(nameof(DefaultSerializer<object>.Instance)).GetMethod.Invoke(null, null);
-			}
-			if (elementSerializer == null)
-				throw new Exception($"Default serializer for type {genericParameterType} wasn't found.");
-
+			object elementSerializer = GetSerializer(genericParameterType);
 			Type serializerType = genericSerializerType.MakeGenericType(new[] { genericParameterType });
 			return (ISerializer<T>)Activator.CreateInstance(serializerType, new[] { elementSerializer });
 		}
