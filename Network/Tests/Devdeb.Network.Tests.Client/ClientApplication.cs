@@ -1,5 +1,4 @@
-﻿using Devdeb.Network.TCP;
-using System;
+﻿using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -9,52 +8,36 @@ namespace Devdeb.Network.Tests.Client
 {
 	class ClientApplication
 	{
-		static private readonly IPAddress _iPAddress = IPAddress.Parse("127.0.0.1");
+		static private readonly IPAddress _iPAddress = IPAddress.Parse("192.168.1.64");
 		static private readonly int _port = 25000;
 
 		static void Main(string[] args)
 		{
 			Console.WriteLine("Client");
-			Thread.Sleep(3000);
-			RunClient();
+			RunTestClient();
 			Console.ReadKey();
-		}
-
-		static void RunClient()
-		{
-			Client client = new Client(_iPAddress, _port);
-			client.Start();
-			client.SendMessage("Hi bitch!");
 		}
 
 		static void RunTestClient()
 		{
 			Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			socket.Connect(new IPEndPoint(_iPAddress, _port));
-			socket.Blocking = true;
+			socket.Blocking = false;
 			Console.WriteLine("Connected");
-			string message = "Hello";
-			byte[] messageBytes = Encoding.ASCII.GetBytes(message);
-			byte[] buffer = new byte[messageBytes.Length + 4];
-			int messageLenght = messageBytes.Length;
-			for (int i = 0; i < 4; i++)
+			byte[] buffer = new byte[100000000];
+			for (int i = 0; i < buffer.Length; i++)
 			{
-				buffer[i] = (byte)((messageLenght >> i * 8) & byte.MaxValue);
+				buffer[i] = 1;
 			}
-			for (int i = 4; i < buffer.Length; i++)
+			for (; ; )
 			{
-				buffer[i] = messageBytes[i - 4];
+				Console.ReadKey();
+				int count = socket.Send(buffer, 0, buffer.Length, SocketFlags.None, out SocketError socketError);
+				if (socketError != SocketError.Success)
+					Console.WriteLine($"Error: {nameof(SocketError)} is {socketError}.");
+				Console.WriteLine($"The bytes were sent. Count : {count}");
+				//Thread.Sleep(1000);
 			}
-			int count = socket.Send(buffer);
 		}
-	}
-
-	public class Client : BaseTCPClient
-	{
-		public Client(IPAddress ipAddress, int port) : base(ipAddress, port) { }
-
-		public void SendMessage(string message) => SendBytes(Encoding.UTF8.GetBytes(message));
-
-		protected override void ReceiveBytes(byte[] bytes) => Console.WriteLine(Encoding.UTF8.GetString(bytes));
 	}
 }
