@@ -2,6 +2,8 @@
 {
     public sealed class SByteSerializer : ConstantLengthSerializer<sbyte>
     {
+        static public SByteSerializer Default { get; } = new SByteSerializer();
+
         public SByteSerializer() : base(sizeof(sbyte)) { }
 
         public unsafe override void Serialize(sbyte instance, byte[] buffer, int offset)

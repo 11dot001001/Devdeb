@@ -10,7 +10,7 @@
         {
             VerifySerialize(instance, buffer, offset);
             fixed (byte* bufferPointer = &buffer[offset])
-                *(int*)bufferPointer = (int)instance;
+                *(uint*)bufferPointer = instance;
         }
         public unsafe override uint Deserialize(byte[] buffer, int offset)
         {

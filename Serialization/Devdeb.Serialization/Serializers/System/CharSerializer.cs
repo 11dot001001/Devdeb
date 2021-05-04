@@ -10,7 +10,7 @@
         {
             VerifySerialize(instance, buffer, offset);
             fixed (byte* bufferPointer = &buffer[offset])
-                *(float*)bufferPointer = instance;
+                *(char*)bufferPointer = instance;
         }
         public unsafe override char Deserialize(byte[] buffer, int offset)
         {

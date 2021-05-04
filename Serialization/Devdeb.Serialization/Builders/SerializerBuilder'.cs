@@ -64,17 +64,13 @@ namespace Devdeb.Serialization.Builders
 			return this;
 		}
 		public SerializerBuilder<T> AddMember<TMember>(Expression<Func<T, TMember>> expression) => AddMember(expression, DefaultSerializer<TMember>.Instance);
-		internal void AddMember(MemberInfo memberInfo)
+		internal void AddMember(MemberInfo memberInfo, object memberSerializer)
 		{
 			VerifyMemberInfo(memberInfo);
+			if (memberSerializer == null)
+				throw new ArgumentException(nameof(memberSerializer));
 
-			Type memberType = GetFieldOrPropertyType(memberInfo);
-			Type defaultSerializer = typeof(DefaultSerializer<>).MakeGenericType(new[] { memberType });
-			PropertyInfo instanceProperty = defaultSerializer.GetProperty(nameof(DefaultSerializer<object>.Instance));
-			object serializer = instanceProperty.GetMethod.Invoke(null, null);
-			if (serializer == null)
-				throw new Exception($"Serializer for {memberType.Name} not found.");
-			_memberSerializaionInfos.Add(new MemberSerializaionInfo(memberInfo, serializer));
+			_memberSerializaionInfos.Add(new MemberSerializaionInfo(memberInfo, memberSerializer));
 		}
 
 		private void VerifyMemberExpression<TMember>(Expression<Func<T, TMember>> expression)
@@ -120,16 +116,6 @@ namespace Devdeb.Serialization.Builders
 				return;
 			}
 			throw new Exception($"The serialization type {_serializationType.FullName} must be in hierarchy public or nested public types.");
-		}
-		
-		private Type GetFieldOrPropertyType(MemberInfo memberInfo)
-		{
-			if (memberInfo is FieldInfo fieldInfo)
-				return fieldInfo.FieldType;
-			else if (memberInfo is PropertyInfo propertyInfo)
-				return propertyInfo.PropertyType;
-			else
-				throw new Exception($"The {memberInfo} is not field or property.");
 		}
 	}
 }

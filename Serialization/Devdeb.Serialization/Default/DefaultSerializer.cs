@@ -1,4 +1,5 @@
 ﻿using Devdeb.Serialization.Builders;
+using Devdeb.Serialization.Extensions;
 using Devdeb.Serialization.Serializers.System;
 using Devdeb.Serialization.Serializers.System.Collections;
 using System;
@@ -58,7 +59,20 @@ namespace Devdeb.Serialization.Default
 			MemberInfo[] members = serializationType.GetMembers(BindingFlags.Public | BindingFlags.Instance);
 			SerializerBuilder<T> serializerBuilder = new SerializerBuilder<T>();
 			foreach (MemberInfo memberInfo in members.Where(x => SerializerBuilder<T>.MemberSelectionPredicate(x)))
-				serializerBuilder.AddMember(memberInfo);
+			{
+				Type memberType = memberInfo.GetFieldOrPropertyType();
+				Type defaultSerializerType = typeof(DefaultSerializer<>).MakeGenericType(new[] { memberType });
+				PropertyInfo instanceProperty = defaultSerializerType.GetProperty(nameof(DefaultSerializer<object>.Instance));
+				serializer = instanceProperty.GetMethod.Invoke(null, null);
+
+				if (memberType.IsClass)
+				{
+                    Type nullableMemberSerializerType = typeof(NullableSerializer<>).MakeGenericType(new[] { memberType });
+					serializer = Activator.CreateInstance(nullableMemberSerializerType, new[] { serializer });
+				}
+
+				serializerBuilder.AddMember(memberInfo, serializer);
+			}
 			DefaultSerializersStorage.AddSerializer(serializationType, _serializer = serializerBuilder.Build());
 		}
 
