@@ -3,22 +3,15 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 
-namespace Devdeb.Tests.Network.Server
+namespace Devdeb.Network.Tests.Server
 {
-    class ServerApplication
+    public class DefaultTest
     {
-        static private readonly IPAddress _iPAddress = IPAddress.Parse("192.168.1.66");
+        static private readonly IPAddress _iPAddress = IPAddress.Parse("127.0.0.1");
         static private readonly int _port = 25000;
         static private readonly int _backlog = 1;
 
-        static void Main(string[] args)
-        {
-            Console.WriteLine("Server");
-            RunTestServer();
-            Console.ReadKey();
-        }
-
-        static void RunTestServer()
+        public void Test()
         {
             byte[] buffer2 = new byte[] { 0, 1, 1, 1 };
             Array.Copy(buffer2, 1, buffer2, 0, 2);
