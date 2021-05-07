@@ -1,11 +1,10 @@
 ﻿using Devdeb.Network.TCP;
-using Devdeb.Network.TCP.Connection;
+using Devdeb.Network.TCP.Communication;
+using Devdeb.Network.TCP.Expecting;
 using Devdeb.Serialization.Serializers;
 using Devdeb.Serialization.Serializers.System;
 using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Text;
 
 namespace Devdeb.Network.Tests.Server
 {
@@ -17,62 +16,41 @@ namespace Devdeb.Network.Tests.Server
 
         public void Test()
         {
-            TcpServer tcpServer = new TcpServer(_iPAddress, _port, _backlog);
+            ExpectingTcpServer tcpServer = new ExpectingTcpServer(_iPAddress, _port, _backlog);
             tcpServer.Start();
             Console.ReadKey();
         }
 
         private class TcpServer : BaseTcpServer
         {
-            private readonly Dictionary<TcpCommunication, CommunicationState> _communicationsStates;
-
             public TcpServer(IPAddress iPAddress, int port, int backlog) : base(iPAddress, port, backlog)
-            {
-                _communicationsStates = new Dictionary<TcpCommunication, CommunicationState>();
-            }
+            { }
 
             protected override void ProcessAccept(TcpCommunication tcpCommunication)
             {
                 Console.WriteLine($"{tcpCommunication.Socket.RemoteEndPoint} was accepted.");
-                _communicationsStates.Add(tcpCommunication, new CommunicationState());
             }
 
             protected override void ProcessCommunication(TcpCommunication tcpCommunication)
             {
-                //Console.WriteLine($"Processing {tcpCommunication.Socket.RemoteEndPoint}.");
-
-                CommunicationState communicationState = _communicationsStates[tcpCommunication];
-                if (tcpCommunication.ReceivedBytesCount < communicationState.ExpectingBytesCount)
-                    return;
-
-                if (!communicationState.IsLengthReceived)
+                Console.WriteLine($"Processing {tcpCommunication.Socket.RemoteEndPoint}.");
+                if (tcpCommunication.BufferBytesCount != 0)
                 {
-                    byte[] lengthBuffer = new byte[Int32Serializer.Default.Size];
-                    tcpCommunication.Receive(lengthBuffer, 0, lengthBuffer.Length);
-                    communicationState.ExpectingBytesCount = Int32Serializer.Default.Deserialize(lengthBuffer, 0);
-
-                    if (tcpCommunication.ReceivedBytesCount < communicationState.ExpectingBytesCount)
-                        return;
+                    string message = tcpCommunication.Receive(StringSerializer.UTF8, tcpCommunication.BufferBytesCount);
+                    Console.WriteLine($"{tcpCommunication.Socket.RemoteEndPoint} message: {message}.");
                 }
-
-                byte[] buffer = new byte[communicationState.ExpectingBytesCount];
-                tcpCommunication.Receive(buffer, 0, buffer.Length);
-
-                string message = StringLengthSerializer.UTF8.Deserialize(buffer, 0, buffer.Length);
-                Console.WriteLine($"{tcpCommunication.Socket.RemoteEndPoint} message: {message}.");
-                _communicationsStates[tcpCommunication] = new CommunicationState();
             }
         }
 
-        public class CommunicationState
+        private class ExpectingTcpServer : BaseExpectingTcpServer
         {
-            public int ExpectingBytesCount { get; set; }
+            public ExpectingTcpServer(IPAddress iPAddress, int port, int backlog) : base(iPAddress, port, backlog) { }
 
-            public bool IsLengthReceived { get; set; }
-
-            public CommunicationState()
+            protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
             {
-                ExpectingBytesCount = Int32Serializer.Default.Size;
+                string message = tcpCommunication.Receive(StringLengthSerializer.UTF8, count);
+                Console.WriteLine($"{tcpCommunication.Socket.RemoteEndPoint} message: {message}.");
+                tcpCommunication.SendWithSize(StringLengthSerializer.UTF8, $"Server message: message <{message}> was received.");
             }
         }
     }

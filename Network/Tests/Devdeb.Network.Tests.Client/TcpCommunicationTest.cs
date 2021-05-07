@@ -1,7 +1,7 @@
-﻿using Devdeb.Network.TCP.Connection;
-using System;
+﻿using System;
 using System.Net.Sockets;
 using System.Net;
+using Devdeb.Network.TCP.Communication;
 
 namespace Devdeb.Network.Tests.Client
 {

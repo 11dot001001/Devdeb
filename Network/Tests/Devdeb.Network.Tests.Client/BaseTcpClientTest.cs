@@ -1,9 +1,10 @@
 ﻿using Devdeb.Network.TCP;
-using Devdeb.Network.TCP.Connection;
+using Devdeb.Network.TCP.Communication;
+using Devdeb.Network.TCP.Expecting;
 using Devdeb.Serialization.Serializers;
-using Devdeb.Serialization.Serializers.System;
 using System;
 using System.Net;
+using System.Threading;
 
 namespace Devdeb.Network.Tests.Client
 {
@@ -14,20 +15,14 @@ namespace Devdeb.Network.Tests.Client
 
         public void Test()
         {
-            TcpClient tcpClient = new TcpClient(_iPAddress, _port);
+            Thread.Sleep(1000); //Fix it
+            ExpectingTcpClient tcpClient = new ExpectingTcpClient(_iPAddress, _port);
             tcpClient.Start();
             for (; ; )
             {
                 string message = Console.ReadLine();
+                tcpClient.SendWithSize(StringLengthSerializer.UTF8, message);
 
-                byte[] buffer = new byte[StringLengthSerializer.UTF8.Size(message)];
-                StringLengthSerializer.UTF8.Serialize(message, buffer, 0);
-
-                byte[] bufferLength = new byte[Int32Serializer.Default.Size];
-                Int32Serializer.Default.Serialize(buffer.Length, bufferLength, 0);
-
-                tcpClient.Send(bufferLength, 0, bufferLength.Length);
-                tcpClient.Send(buffer, 0, buffer.Length);
                 Console.WriteLine("Message sent.");
             }
         }
@@ -40,6 +35,17 @@ namespace Devdeb.Network.Tests.Client
 
             protected override void ProcessCommunication(TcpCommunication tcpCommunication)
             {
+            }
+        }
+
+        private class ExpectingTcpClient : BaseExpectingTcpClient
+        {
+            public ExpectingTcpClient(IPAddress iPAddress, int port) : base(iPAddress, port) { }
+
+            protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
+            {
+                string message = tcpCommunication.Receive(StringLengthSerializer.UTF8, count);
+                Console.WriteLine($"{tcpCommunication.Socket.RemoteEndPoint} message: {message}.");
             }
         }
     }

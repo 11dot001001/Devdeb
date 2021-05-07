@@ -1,4 +1,4 @@
-﻿using Devdeb.Network.TCP.Connection;
+﻿using Devdeb.Network.TCP.Communication;
 using System;
 using System.Net;
 using System.Net.Sockets;

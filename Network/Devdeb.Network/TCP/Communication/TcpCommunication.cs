@@ -1,9 +1,10 @@
 ﻿using Devdeb.Serialization;
+using Devdeb.Serialization.Serializers.System;
 using Devdeb.Sets.Extensions;
 using System;
 using System.Net.Sockets;
 
-namespace Devdeb.Network.TCP.Connection
+namespace Devdeb.Network.TCP.Communication
 {
     public class TcpCommunication
     {
@@ -44,6 +45,35 @@ namespace Devdeb.Network.TCP.Connection
                     Count += count;
                 }
             }
+            public void Add<T>(ISerializer<T> serializer, T instance)
+            {
+                if (serializer == null)
+                    throw new ArgumentNullException(nameof(serializer));
+
+                int instanceSize = serializer.Size(instance);
+                EnsureAvailableSpace(instanceSize);
+                lock (DataLock)
+                {
+                    serializer.Serialize(instance, Data, Offset + Count);
+                    Count += instanceSize;
+                }
+            }
+            public void AddWithSize<T>(ISerializer<T> serializer, T instance)
+            {
+                if (serializer == null)
+                    throw new ArgumentNullException(nameof(serializer));
+
+                int instanceSize = serializer.Size(instance);
+                EnsureAvailableSpace(instanceSize);
+                lock (DataLock)
+                {
+                    int startOffset = Offset + Count;
+                    Int32Serializer.Default.Serialize(instanceSize, Data, ref startOffset);
+                    serializer.Serialize(instance, Data, startOffset);
+                    Count += Int32Serializer.Default.Size + instanceSize;
+                }
+            }
+
             public void Read(byte[] buffer, int offset, int count)
             {
                 if (buffer == null)
@@ -65,6 +95,26 @@ namespace Devdeb.Network.TCP.Connection
                     Offset = Count == 0 ? 0 : Offset + count;
                 }
             }
+            public T Read<T>(ISerializer<T> serializer, int count)
+            {
+                if (serializer == null)
+                    throw new ArgumentNullException(nameof(serializer));
+                if (count <= 0)
+                    throw new ArgumentOutOfRangeException(nameof(count));
+                if (count > Count)
+                    throw new ArgumentOutOfRangeException($"Requested count: {count} exceeds available {Count}.");
+
+                T result;
+                lock (DataLock)
+                {
+                    bool needCount = serializer.Flags.HasFlag(SerializerFlags.NeedCount);
+                    result = serializer.Deserialize(Data, Offset, needCount ? (int?)count : null);
+                    Count -= count;
+                    Offset = Count == 0 ? 0 : Offset + count;
+                }
+                return result;
+            }
+
             public void EnsureAvailableSpace(int count)
             {
                 if (count < 0)
@@ -105,6 +155,7 @@ namespace Devdeb.Network.TCP.Connection
 
         public Socket Socket => _tcpSocket;
         public int ReceivedBytesCount => _receivingBuffer.Count + _tcpSocket.Available;
+        public int BufferBytesCount => _receivingBuffer.Count;
 
         public void Receive(byte[] buffer, int offset, int count)
         {
@@ -149,6 +200,8 @@ namespace Devdeb.Network.TCP.Connection
             if (receivedBytesCount != count)
                 throw new Exception("Couldn't read the data in the requested amount.");
         }
+        public T Receive<T>(ISerializer<T> serializer, int count) => _receivingBuffer.Read(serializer, count);
+        public T Receive<T>(IConstantLengthSerializer<T> serializer) => Receive(serializer, serializer.Size);
         public void Send(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
@@ -175,13 +228,8 @@ namespace Devdeb.Network.TCP.Connection
 
             _sendingBuffer.Add(buffer, offset + sentBytesCount, count - sentBytesCount);
         }
-
-
-        //TODO: Think about serializers for decrease buffers in receive, send
-        //public T Deserialize<T>(ISerializer<T> serializer)
-        //{
-        //    serializer.Deserialize(
-        //}
+        public void Send<T>(ISerializer<T> serializer, T instance) => _sendingBuffer.Add(serializer, instance);
+        public void SendWithSize<T>(ISerializer<T> serializer, T instance) => _sendingBuffer.AddWithSize(serializer, instance);
 
         public void ReceiveToBuffer()
         {

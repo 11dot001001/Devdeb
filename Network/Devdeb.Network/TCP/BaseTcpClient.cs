@@ -1,8 +1,9 @@
 ﻿using System.Net;
 using System;
-using Devdeb.Network.TCP.Connection;
 using System.Net.Sockets;
 using System.Threading;
+using Devdeb.Serialization;
+using Devdeb.Network.TCP.Communication;
 
 namespace Devdeb.Network.TCP
 {
@@ -45,6 +46,16 @@ namespace Devdeb.Network.TCP
             Send(buffer, offset, count);
             offset += count;
         }
+        public void Send<T>(ISerializer<T> serializer, T instance)
+        {
+            VerifyClientState();
+            _tcpCommunication.Send(serializer, instance);
+        }
+        public void SendWithSize<T>(ISerializer<T> serializer, T instance)
+        {
+            VerifyClientState();
+            _tcpCommunication.SendWithSize(serializer, instance);
+        }
 
         public void Start()
         {
@@ -73,7 +84,7 @@ namespace Devdeb.Network.TCP
             _tcpCommunication = new TcpCommunication(socket);
             _connectionProcessing.Start();
             _isStarted = true;
-            Console.WriteLine("Server has been started.");
+            Console.WriteLine("Client has been started.");
         }
         public void Stop()
         {

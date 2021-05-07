@@ -1,4 +1,4 @@
-﻿using Devdeb.Network.TCP.Connection;
+﻿using Devdeb.Network.TCP.Communication;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -36,6 +36,7 @@ namespace Devdeb.Network.TCP
             _acceptingThread.Start();
             _connectionProcessing.Start();
             _isStarted = true;
+            Console.WriteLine("Server has been started.");
         }
 
         protected abstract void ProcessCommunication(TcpCommunication tcpCommunication);
