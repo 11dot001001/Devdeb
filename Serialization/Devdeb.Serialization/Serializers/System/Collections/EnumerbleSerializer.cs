@@ -17,7 +17,7 @@ namespace Devdeb.Serialization.Serializers.System.Collections
 			VerifySize(instance);
 			int size = 0;
 			foreach(T element in instance)
-				size += _elementSerializer.Size(element);
+                size = checked(size + _elementSerializer.Size(element));
 			return size;
 		}
 		public override void Serialize(IEnumerable<T> instance, byte[] buffer, int offset)

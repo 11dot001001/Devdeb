@@ -31,7 +31,6 @@ namespace Devdeb.Serialization.Builders
 			Type baseType = typeof(Serializer<>).MakeGenericType(new[] { typeSerializationInfo.SerializationType });
 
 			TypeBuilder typeBuilder = DefineType(baseType, typeSerializationInfo);
-			typeBuilder.AddInterfaceImplementation(typeof(ISerializer<>).MakeGenericType(new[] { typeSerializationInfo.SerializationType }));
 
 			FieldBuilder[] serializersFields = BuildSerializersFields(typeBuilder, typeSerializationInfo);
 			BuildConstructor(typeBuilder, serializersFields, baseType, typeSerializationInfo);

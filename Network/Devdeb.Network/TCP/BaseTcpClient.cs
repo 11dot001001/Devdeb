@@ -84,6 +84,7 @@ namespace Devdeb.Network.TCP
             _tcpCommunication = new TcpCommunication(socket);
             _connectionProcessing.Start();
             _isStarted = true;
+            NotifyStarted();
             Console.WriteLine("Client has been started.");
         }
         public void Stop()
@@ -93,6 +94,9 @@ namespace Devdeb.Network.TCP
         }
 
         protected abstract void ProcessCommunication(TcpCommunication tcpCommunication);
+        protected virtual void NotifyStarted() { }
+
+        protected TcpCommunication TcpCommunication => _tcpCommunication;
 
         private void VerifyClientState()
         {

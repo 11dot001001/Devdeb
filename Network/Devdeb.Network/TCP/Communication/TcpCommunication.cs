@@ -41,8 +41,28 @@ namespace Devdeb.Network.TCP.Communication
                 EnsureAvailableSpace(count);
                 lock (DataLock)
                 {
-                    Array.Copy(buffer, offset, Data, Offset, count);
+                    Array.Copy(buffer, offset, Data, Offset + Count, count);
                     Count += count;
+                }
+            }
+            public void AddWithSize(byte[] buffer, int offset, int count)
+            {
+                if (buffer == null)
+                    throw new ArgumentNullException(nameof(buffer));
+                if (offset < 0)
+                    throw new ArgumentOutOfRangeException(nameof(offset));
+                if (count <= 0)
+                    throw new ArgumentOutOfRangeException(nameof(count));
+                if (offset + count > buffer.Length)
+                    throw new Exception($"The {nameof(offset)} with {nameof(count)} exceeds {nameof(buffer.Length)}");
+
+                EnsureAvailableSpace(count);
+                lock (DataLock)
+                {
+                    int startOffset = Offset + Count;
+                    Int32Serializer.Default.Serialize(count, Data, ref startOffset);
+                    Array.Copy(buffer, offset, Data, startOffset, count);
+                    Count += Int32Serializer.Default.Size + count;
                 }
             }
             public void Add<T>(ISerializer<T> serializer, T instance)
@@ -228,6 +248,7 @@ namespace Devdeb.Network.TCP.Communication
 
             _sendingBuffer.Add(buffer, offset + sentBytesCount, count - sentBytesCount);
         }
+        public void SendWithSize(byte[] buffer, int offset, int count) => _sendingBuffer.AddWithSize(buffer, offset, count);
         public void Send<T>(ISerializer<T> serializer, T instance) => _sendingBuffer.Add(serializer, instance);
         public void SendWithSize<T>(ISerializer<T> serializer, T instance) => _sendingBuffer.AddWithSize(serializer, instance);
 
