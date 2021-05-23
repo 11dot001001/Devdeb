@@ -51,13 +51,18 @@ namespace Devdeb.Network.TCP
             VerifyClientState();
             _tcpCommunication.Send(serializer, instance);
         }
+        public void SendWithSize(byte[] buffer, int offset, int count)
+        {
+            VerifyClientState();
+            _tcpCommunication.SendWithSize(buffer, offset, count);
+        }
         public void SendWithSize<T>(ISerializer<T> serializer, T instance)
         {
             VerifyClientState();
             _tcpCommunication.SendWithSize(serializer, instance);
         }
 
-        public void Start()
+		public void Start()
         {
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
