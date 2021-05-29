@@ -56,7 +56,7 @@ namespace Devdeb.Serialization.Default
 			}
 			#endregion
 
-			MemberInfo[] members = serializationType.GetMembers(BindingFlags.Public | BindingFlags.Instance);
+			MemberInfo[] members = serializationType.GetMembers(BindingFlags.Public | BindingFlags.Instance).OrderBy(x => x.Name).ToArray();
 			SerializerBuilder<T> serializerBuilder = new SerializerBuilder<T>();
 			foreach (MemberInfo memberInfo in members.Where(x => SerializerBuilder<T>.MemberSelectionPredicate(x)))
 			{

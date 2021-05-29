@@ -3,6 +3,7 @@ using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Interfaces;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Models;
 using System;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace Devdeb.Network.Tests.Client
 {
@@ -15,17 +16,46 @@ namespace Devdeb.Network.Tests.Client
 		{
 			RpcClient<IClient, IServer> rpcClient = new RpcClient<IClient, IServer>(_iPAddress, _port);
 			rpcClient.Start();
-			rpcClient.Requestor.AddStudent(
-				new StudentFm
+
+
+			for (; ; )
+			{
+				Task.Factory.StartNew(() =>
 				{
-					Name = "Серафим Студентович",
-					Age = 20
-				},
-				10
-			);
-			rpcClient.Requestor.DeleteStudent(Guid.Parse("6a6ccb67-df1e-478e-b649-311a9f9ec2db"));
-			rpcClient.Requestor.DeleteStudent(Guid.Parse("6a6ccb67-df1e-478e-b649-311a9f9ec2db"));
-			rpcClient.Requestor.DeleteStudent(Guid.Parse("6a6ccb67-df1e-478e-b649-311a9f9ec2db"));
+					var id = rpcClient.Requestor.AddStudent(
+						new StudentFm
+						{
+							Name = "Серафим Студентович 3",
+							Age = 20
+						},
+						10
+					).ContinueWith(id =>
+					{
+						rpcClient.Requestor.GetStudent(id.Result).ContinueWith(student =>
+						{
+							Console.WriteLine(student.Result.Name);
+						});
+					});
+				});
+				Console.WriteLine(rpcClient.Requestor.FreeId);
+			}
+
+
+			//for (; ; )
+			//{
+			//	Task.Factory.StartNew(() =>
+			//	{
+			//		rpcClient.Requestor.AddStudent(
+			//			new StudentFm
+			//			{
+			//				Name = "Серафим Студентович 3",
+			//				Age = 20
+			//			},
+			//			10
+			//		).ContinueWith(x => Console.WriteLine(x.Result));
+			//	});
+			//	Console.WriteLine(rpcClient.Requestor.FreeId);
+			//}
 			Console.ReadKey();
 		}
 	}

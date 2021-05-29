@@ -3,179 +3,150 @@ using Devdeb.Serialization.Default;
 using Devdeb.Serialization;
 using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using System.Linq;
 using System.Reflection;
-using Devdeb.Network.TCP.Rpc.RpcRequest;
+using System.Threading.Tasks;
+using Devdeb.Network.TCP.Rpc.Communication;
 
 namespace Devdeb.Network.TCP.Rpc.Requestor
 {
 	public class RpcRequestor<TRequestor> : DispatchProxy
 	{
-		private class RequestorMeta
+		private struct ReceivedResponce
 		{
-			public RpcRequestMeta RequestMeta;
-			public CalculateSize CalculateArgumentsSize;
-			public Serialize SerializeArguments;
+			public byte[] Buffer;
+			public int Offset;
 		}
-		private delegate int CalculateSize(object[] arguments);
-		private delegate void Serialize(byte[] buffer, ref int offset, object[] arguments);
-		
-		static private readonly Type _requestorType;
-
-		static RpcRequestor()
+		private class RequestorMethodMeta
 		{
-			_requestorType = typeof(TRequestor);
+			public int RequestCount { get; set; }
+			public object RequestCountLocker { get; }
+			public CommunicationMethodMeta CommunicationMethodMeta { get; }
+			public MethodInfo ConvertResult { get; }
+
+			public RequestorMethodMeta(CommunicationMethodMeta communicationMethodMeta)
+			{
+				RequestCount = 0;
+				RequestCountLocker = new object();
+				CommunicationMethodMeta = communicationMethodMeta ?? throw new ArgumentNullException(nameof(communicationMethodMeta));
+
+				if (communicationMethodMeta.IsAwaitingResult && communicationMethodMeta.IsAsyncAwaitingResult)
+				{
+
+					ConvertResult = typeof(RpcRequestor<TRequestor>)
+									.GetMethod(nameof(Convert), BindingFlags.Static | BindingFlags.NonPublic)
+									.MakeGenericMethod(CommunicationMethodMeta.ResultType);
+				}
+			}
+		}
+		private class ResponceWaitingMeta
+		{
+			public int MethodId;
+			public int Code;
+			public TaskCompletionSource<ReceivedResponce> TaskCompletionSource;
 		}
 
-		static public TRequestor Create(TcpCommunication tcpCommunication)
+		static public RpcRequestor<TRequestor> Create(TcpCommunication tcpCommunication)
 		{
-			TRequestor proxy = Create<TRequestor, RpcRequestor<TRequestor>>();
+			RpcRequestor<TRequestor> proxy = (RpcRequestor<TRequestor>)(object)Create<TRequestor, RpcRequestor<TRequestor>>();
 
-			((RpcRequestor<TRequestor>)(object)proxy).Initialize(tcpCommunication);
+			proxy.Initialize(tcpCommunication);
 
 			return proxy;
 		}
 
 		private TcpCommunication _tcpCommunication;
-		private Dictionary<MemberInfo, RequestorMeta> _meta;
-		private ISerializer<RpcRequestMeta> _requestMetaSerializer;
+		private RequestorMethodMeta[] _meta;
+		private ISerializer<CommunicationMeta> _requestMetaSerializer;
+		private HashSet<ResponceWaitingMeta> _responceWaitingMetas;
 
 		private void Initialize(TcpCommunication tcpCommunication)
 		{
 			_tcpCommunication = tcpCommunication ?? throw new ArgumentNullException(nameof(tcpCommunication));
-			_meta = new Dictionary<MemberInfo, RequestorMeta>();
-			_requestMetaSerializer = DefaultSerializer<RpcRequestMeta>.Instance;
+			_requestMetaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
+			_responceWaitingMetas = new HashSet<ResponceWaitingMeta>();
 
-			MethodInfo[] requestMethods = _requestorType.GetMethods(BindingFlags.Public | BindingFlags.Instance).OrderBy(x => x.Name).ToArray();
+			CommunicationMethodMeta[] methodsMeta = new CommunicationMethodsMetaBuilder<TRequestor>().AddPublicInstanceMethods().Build();
+			_meta = methodsMeta.Select(x => new RequestorMethodMeta(x)).ToArray();
+		}
 
-			for (int requestMethodIndex = 0; requestMethodIndex < requestMethods.Length; requestMethodIndex++)
+		internal void HandleResponse(CommunicationMeta meta, byte[] buffer, int offset)
+		{
+			ResponceWaitingMeta responceMeta;
+			lock (_responceWaitingMetas)
 			{
-				MethodInfo requestMethod = requestMethods[requestMethodIndex];
-
-				Type[] argumentTypes = requestMethod.GetParameters().Select(x => x.ParameterType).ToArray();
-
-				ParameterExpression[] serializers = new ParameterExpression[argumentTypes.Length];
-				Expression[] assigningSerializers = new Expression[argumentTypes.Length];
-				ParameterExpression argumentsParameter = Expression.Parameter(typeof(object[]), "arguments");
-
-				#region CalculateSize
-
-				ParameterExpression sizeVariable = Expression.Variable(typeof(int), "size");
-				BinaryExpression[] addSizeExpressions = new BinaryExpression[argumentTypes.Length];
-
-				for (int argumentIndex = 0; argumentIndex < argumentTypes.Length; argumentIndex++)
-				{
-					Type argumentType = argumentTypes[argumentIndex];
-					Type serializerType = typeof(ISerializer<>).MakeGenericType(argumentType);
-
-					ParameterExpression serializer = Expression.Variable(serializerType);
-
-					MethodInfo getSerializer = typeof(DefaultSerializer<>)
-													.MakeGenericType(argumentType)
-													.GetProperty(nameof(DefaultSerializer<object>.Instance))
-													.GetGetMethod();
-
-					MethodInfo size = serializerType.GetMethod(nameof(ISerializer<object>.Size));
-
-
-					IndexExpression argumentAccess = Expression.ArrayAccess(argumentsParameter, Expression.Constant(argumentIndex));
-
-					MethodCallExpression sizeExpression = Expression.Call(
-						serializer,
-						size,
-						Expression.Convert(argumentAccess, argumentType)
-					);
-
-					serializers[argumentIndex] = serializer;
-					assigningSerializers[argumentIndex] = Expression.Assign(serializer, Expression.Call(getSerializer));
-
-					addSizeExpressions[argumentIndex] = Expression.AddAssignChecked(sizeVariable, sizeExpression);
-				}
-
-				BlockExpression calculateSizeExpression = Expression.Block(
-					serializers.Append(sizeVariable),
-					assigningSerializers
-					.Append(Expression.Assign(sizeVariable, Expression.Default(typeof(int))))
-					.Concat(addSizeExpressions)
+				responceMeta = _responceWaitingMetas.First(x =>
+				x.MethodId == meta.MethodId &&
+				x.Code == meta.Code
 				);
-
-				CalculateSize calculateSize = Expression.Lambda<CalculateSize>(calculateSizeExpression, argumentsParameter).Compile();
-
-				#endregion
-
-				#region Serialize
-
-				ParameterExpression bufferParameter = Expression.Parameter(typeof(byte[]), "buffer");
-				ParameterExpression offsetParameter = Expression.Parameter(typeof(int).MakeByRefType(), "offset");
-				MethodCallExpression[] serializeExpressions = new MethodCallExpression[argumentTypes.Length];
-
-				for (int argumentIndex = 0; argumentIndex < argumentTypes.Length; argumentIndex++)
-				{
-					Type argumentType = argumentTypes[argumentIndex];
-					Type serializerType = typeof(ISerializer<>).MakeGenericType(argumentType);
-
-					ParameterExpression serializer = Expression.Variable(serializerType);
-
-					MethodInfo getSerializer = typeof(DefaultSerializer<>)
-													.MakeGenericType(argumentType)
-													.GetProperty(nameof(DefaultSerializer<object>.Instance))
-													.GetGetMethod();
-
-					MethodInfo serializeInfo = serializerType.GetMethod(
-						nameof(ISerializer<object>.Serialize),
-						new[] { argumentType, typeof(byte[]), typeof(int).MakeByRefType() }
-					);
-
-
-					IndexExpression argumentAccess = Expression.ArrayAccess(argumentsParameter, Expression.Constant(argumentIndex));
-
-					MethodCallExpression serializeCallExpression = Expression.Call(
-						serializer,
-						serializeInfo,
-						new Expression[] { Expression.Convert(argumentAccess, argumentType), bufferParameter, offsetParameter }
-					);
-
-					serializers[argumentIndex] = serializer;
-					assigningSerializers[argumentIndex] = Expression.Assign(serializer, Expression.Call(getSerializer));
-
-					serializeExpressions[argumentIndex] = serializeCallExpression;
-				}
-
-				BlockExpression serializeExpression = Expression.Block(
-					serializers,
-					assigningSerializers.Concat(serializeExpressions)
-				);
-
-				Serialize serialize = Expression.Lambda<Serialize>(serializeExpression, bufferParameter, offsetParameter, argumentsParameter).Compile();
-
-				#endregion
-
-				_meta.Add(requestMethod, new RequestorMeta
-				{
-					RequestMeta = new RpcRequestMeta
-					{
-						MethodIndex = requestMethodIndex
-					},
-					CalculateArgumentsSize = calculateSize,
-					SerializeArguments = serialize
-				});
+				_responceWaitingMetas.Remove(responceMeta);
 			}
+
+			responceMeta.TaskCompletionSource.SetResult(new ReceivedResponce
+			{
+				Buffer = buffer,
+				Offset = offset
+			});
 		}
 
 		protected override object Invoke(MethodInfo targetMethod, object[] args)
 		{
-			RequestorMeta meta = _meta[targetMethod];
+			RequestorMethodMeta requestorMethodMeta = _meta.First(x => x.CommunicationMethodMeta.MethodInfo == targetMethod);
 
-			byte[] buffer = new byte[_requestMetaSerializer.Size(meta.RequestMeta) + meta.CalculateArgumentsSize(args)];
+			int requestCode;
+			lock (requestorMethodMeta.RequestCountLocker)
+			{
+				requestCode = requestorMethodMeta.RequestCount;
+				requestorMethodMeta.RequestCount++;
+			}
+
+			CommunicationMethodMeta methodMeta = requestorMethodMeta.CommunicationMethodMeta;
+			CommunicationMeta requestMeta = new CommunicationMeta
+			{
+				Type = CommunicationMeta.PackageType.Request,
+				MethodId = methodMeta.Id,
+				Code = requestCode
+			};
+
+			int bufferLength = _requestMetaSerializer.Size(requestMeta);
+			if (methodMeta.DoesNeedArguments)
+				bufferLength += methodMeta.ArgumentSerializer.Size(args);
+
+			byte[] buffer = new byte[bufferLength];
 			int offset = 0;
 
-			_requestMetaSerializer.Serialize(meta.RequestMeta, buffer, ref offset);
-			meta.SerializeArguments(buffer, ref offset, args);
+			_requestMetaSerializer.Serialize(requestMeta, buffer, ref offset);
+			if (methodMeta.DoesNeedArguments)
+				methodMeta.ArgumentSerializer.Serialize(args, buffer, ref offset);
+
+			if (!methodMeta.IsAwaitingResult)
+			{
+				_tcpCommunication.SendWithSize(buffer, 0, buffer.Length);
+				return null;
+			}
+
+			TaskCompletionSource<ReceivedResponce> taskCompletionSource = new TaskCompletionSource<ReceivedResponce>();
+			lock (_responceWaitingMetas)
+				_responceWaitingMetas.Add(new ResponceWaitingMeta
+				{
+					Code = requestCode,
+					MethodId = methodMeta.Id,
+					TaskCompletionSource = taskCompletionSource
+				});
+
+			Task<object> getObjectResultTask = taskCompletionSource.Task.ContinueWith(x =>
+			{
+				return methodMeta.ResultSerializer.Deserialize(x.Result.Buffer, x.Result.Offset);
+			});
 
 			_tcpCommunication.SendWithSize(buffer, 0, buffer.Length);
 
-			return default;
+			if (!methodMeta.IsAsyncAwaitingResult)
+				return getObjectResultTask.GetAwaiter().GetResult();
+
+			return requestorMethodMeta.ConvertResult.Invoke(null, new[] { getObjectResultTask });
 		}
+
+		static private async Task<T> Convert<T>(Task<object> task) => (T)await task;
 	}
 }

@@ -9,6 +9,8 @@ namespace Devdeb.Serialization.Serializers.System.Collections
         public ArraySerializer(ISerializer<T> elementSerializer) : base(SerializerFlags.NeedCount)
         {
             _elementSerializer = elementSerializer ?? throw new ArgumentNullException(nameof(elementSerializer));
+            if (elementSerializer.Flags.HasFlag(SerializerFlags.NeedCount))
+				throw new Exception("The array serializer cannot deal with need count serializers.");
         }
 
         public override int Size(T[] instance)

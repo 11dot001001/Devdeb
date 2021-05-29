@@ -14,7 +14,8 @@ namespace Devdeb.Network.Tests.Server
 
 		public void Test()
 		{
-			RpcServer<IServer> server = new RpcServer<IServer>(_iPAddress, _port, _backlog, new ServerImplementation());
+			ServerImplementation serverImplementation = new ServerImplementation();
+			RpcServer<IServer> server = new RpcServer<IServer>(_iPAddress, _port, _backlog, serverImplementation);
 			server.Start();
 			Console.ReadKey();
 		}

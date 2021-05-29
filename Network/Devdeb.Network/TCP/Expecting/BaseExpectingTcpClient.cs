@@ -22,6 +22,7 @@ namespace Devdeb.Network.TCP.Expecting
             if (!_communicationState.IsLengthReceived)
             {
                 _communicationState.ExpectingBytesCount = tcpCommunication.Receive(Int32Serializer.Default);
+                _communicationState.IsLengthReceived = true;
                 if (tcpCommunication.BufferBytesCount < _communicationState.ExpectingBytesCount)
                     return;
             }
