@@ -1,5 +1,7 @@
 ﻿using Devdeb.Network.TCP.Rpc;
-using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Interfaces;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Client;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Client;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Models;
 using System;
 using System.Net;
@@ -14,13 +16,13 @@ namespace Devdeb.Network.Tests.Client
 
 		public void Test()
 		{
-			RpcClient<IClient, IServer> rpcClient = new RpcClient<IClient, IServer>(_iPAddress, _port);
+			ClientController clientImplementation = new ClientController();
+			RpcClient<IClientController, IStudentContoller> rpcClient = new RpcClient<IClientController, IStudentContoller>(_iPAddress, _port, clientImplementation);
 			rpcClient.Start();
-
 
 			for (; ; )
 			{
-				Task.Factory.StartNew(() =>
+				new Task(() =>
 				{
 					var id = rpcClient.Requestor.AddStudent(
 						new StudentFm
@@ -36,26 +38,10 @@ namespace Devdeb.Network.Tests.Client
 							Console.WriteLine(student.Result.Name);
 						});
 					});
-				});
+				}).Start();
 				Console.WriteLine(rpcClient.Requestor.FreeId);
 			}
 
-
-			//for (; ; )
-			//{
-			//	Task.Factory.StartNew(() =>
-			//	{
-			//		rpcClient.Requestor.AddStudent(
-			//			new StudentFm
-			//			{
-			//				Name = "Серафим Студентович 3",
-			//				Age = 20
-			//			},
-			//			10
-			//		).ContinueWith(x => Console.WriteLine(x.Result));
-			//	});
-			//	Console.WriteLine(rpcClient.Requestor.FreeId);
-			//}
 			Console.ReadKey();
 		}
 	}

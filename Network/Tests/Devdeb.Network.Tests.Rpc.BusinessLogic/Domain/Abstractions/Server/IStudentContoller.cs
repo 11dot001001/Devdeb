@@ -2,9 +2,9 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Interfaces
+namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server
 {
-	public interface IServer
+	public interface IStudentContoller
 	{
 		Task<Guid> AddStudent(StudentFm studentFm, int testValue);
 		Task<StudentVm> GetStudent(Guid id);

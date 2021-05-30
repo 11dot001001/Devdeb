@@ -1,6 +1,8 @@
 ﻿using Devdeb.Network.TCP.Rpc;
-using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain;
-using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Interfaces;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Client;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Models;
 using System;
 using System.Net;
 
@@ -14,8 +16,9 @@ namespace Devdeb.Network.Tests.Server
 
 		public void Test()
 		{
-			ServerImplementation serverImplementation = new ServerImplementation();
-			RpcServer<IServer> server = new RpcServer<IServer>(_iPAddress, _port, _backlog, serverImplementation);
+			ServerStudentContoller serverImplementation = new ServerStudentContoller();
+			RpcServer<IStudentContoller, IClientController> server = new RpcServer<IStudentContoller, IClientController>(_iPAddress, _port, _backlog, serverImplementation);
+			server.Test = x => x.HandleStudentUpdate(Guid.NewGuid(), new StudentVm { Name = "1212" });
 			server.Start();
 			Console.ReadKey();
 		}

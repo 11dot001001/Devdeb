@@ -1,18 +1,18 @@
-﻿using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Interfaces;
+﻿using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Models;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain
+namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server
 {
-	public class ServerImplementation : IServer
+	public class ServerStudentContoller : IStudentContoller
 	{
 		private readonly Dictionary<Guid, StudentVm> _students;
 		private static int _freeId;
 		private static object _freeIdLocker = new object();
 
-		public ServerImplementation()
+		public ServerStudentContoller()
 		{
 			_freeId = 0;
 			_students = new Dictionary<Guid, StudentVm>();
@@ -30,6 +30,7 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain
 
 		public async Task<Guid> AddStudent(StudentFm studentFm, int testValue)
 		{
+			
 			Guid studentId = Guid.NewGuid();
 
 			lock (_students)
@@ -44,7 +45,6 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain
 				);
 
 			Console.WriteLine($"Student {studentFm.Name} was added with id {studentId}. TestValue {testValue}.");
-			await Task.Delay(5000);
 
 			return studentId;
 		}
