@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Devdeb.Network.TCP.Rpc.Handler
 {
-	public class RpcHandler<THandler>
+	public class ControllerHandler<THandler> : IControllerHandler
 	{
 		private class HandlerMethodMeta
 		{
@@ -23,20 +23,20 @@ namespace Devdeb.Network.TCP.Rpc.Handler
 				if (communicationMethodMeta.IsAwaitingResult && communicationMethodMeta.IsAsyncAwaitingResult)
 				{
 
-					ConvertResult = typeof(RpcHandler<THandler>)
+					ConvertResult = typeof(ControllerHandler<THandler>)
 									.GetMethod(nameof(Convert), BindingFlags.Static | BindingFlags.NonPublic)
 									.MakeGenericMethod(CommunicationMethodMeta.ResultType);
 				}
 			}
 		}
 
-		private readonly THandler _handlerInstance;
+		private readonly THandler _controller;
 		private readonly HandlerMethodMeta[] _meta;
 		private readonly ISerializer<CommunicationMeta> _metaSerializer;
 
-		public RpcHandler(THandler handlerInstance)
+		public ControllerHandler(THandler handlerInstance)
 		{
-			_handlerInstance = handlerInstance ?? throw new ArgumentNullException(nameof(handlerInstance));
+			_controller = handlerInstance ?? throw new ArgumentNullException(nameof(handlerInstance));
 			CommunicationMethodMeta[] methodsMeta = new CommunicationMethodsMetaBuilder<THandler>().AddPublicInstanceMethods().Build();
 			_metaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
 			_meta = methodsMeta.Select(x => new HandlerMethodMeta(x)).ToArray();
@@ -56,7 +56,7 @@ namespace Devdeb.Network.TCP.Rpc.Handler
 
 			if (methodMeta.DoesNeedArguments)
 				arguments = methodMeta.ArgumentSerializer.Deserialize(buffer, ref offset);
-			object result = methodMeta.MethodInfo.Invoke(_handlerInstance, arguments);
+			object result = methodMeta.MethodInfo.Invoke(_controller, arguments);
 
 			if (!methodMeta.IsAwaitingResult)
 				return;

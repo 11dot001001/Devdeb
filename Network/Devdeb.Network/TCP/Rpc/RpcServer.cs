@@ -12,23 +12,34 @@ using System.Threading.Tasks;
 
 namespace Devdeb.Network.TCP.Rpc
 {
-	public sealed class RpcServer<THandler, TRequestor> : BaseExpectingTcpServer
+	public sealed class RpcServer : BaseExpectingTcpServer
 	{
 		private readonly ISerializer<CommunicationMeta> _metaSerializer;
-		private readonly Dictionary<TcpCommunication, RpcRequestor<TRequestor>> _connections;
-		private readonly RpcHandler<THandler> _handler;
+		private readonly Dictionary<TcpCommunication, RequestorCollection> _connections;
+		private readonly ControllersRouter _controllersRouter;
+		private readonly Func<RequestorCollection> _createRequestors;
 
-		public RpcServer(IPAddress iPAddress, int port, int backlog, THandler handler) : base(iPAddress, port, backlog)
+		public RpcServer(
+			IPAddress iPAddress,
+			int port,
+			int backlog,
+			IEnumerable<IControllerHandler> controllerHandlers,
+			Func<RequestorCollection> createRequestors
+		) : base(iPAddress, port, backlog)
 		{
 			_metaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
-			_connections = new Dictionary<TcpCommunication, RpcRequestor<TRequestor>>();
-			_handler = new RpcHandler<THandler>(handler);
+			_connections = new Dictionary<TcpCommunication, RequestorCollection>();
+			_controllersRouter = new ControllersRouter(controllerHandlers);
+			_createRequestors = createRequestors;
 		}
 
 		protected override void ProcessAccept(TcpCommunication tcpCommunication)
 		{
 			base.ProcessAccept(tcpCommunication);
-			_connections.Add(tcpCommunication, RpcRequestor<TRequestor>.Create(tcpCommunication));
+
+			RequestorCollection requestor = _createRequestors();
+			requestor.InitializeRequestors(tcpCommunication);
+			_connections.Add(tcpCommunication, requestor);
 		}
 
 		protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
@@ -44,22 +55,20 @@ namespace Devdeb.Network.TCP.Rpc
 				switch (meta.Type)
 				{
 					case CommunicationMeta.PackageType.Request:
-						_handler.HandleRequest(tcpCommunication, meta, buffer, offset);
+						_controllersRouter.RouteToController(tcpCommunication, meta, buffer, offset);
 						break;
 					case CommunicationMeta.PackageType.Response:
 						{
-							RpcRequestor<TRequestor> clientRequestor = _connections[tcpCommunication];
-							clientRequestor.HandleResponse(meta, buffer, offset);
+							RequestorCollection requestors = _connections[tcpCommunication];
+							requestors.HandleResponse(meta, buffer, offset);
 							break;
 						}
 					default: throw new Exception($"Invalid value {meta.Type} for {nameof(meta.Type)}.");
 				}
-
-			    RpcRequestor<TRequestor> clientRequestor2 = _connections[tcpCommunication];
-				Test((TRequestor)(object)clientRequestor2);
+				TestClientRequest(_connections[tcpCommunication]);
 			});
 		}
 
-		public Action<TRequestor> Test { get; set; }
+		public Action<RequestorCollection> TestClientRequest { get; set; }
 	}
 }

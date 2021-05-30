@@ -6,24 +6,31 @@ using Devdeb.Network.TCP.Rpc.Requestor;
 using Devdeb.Serialization;
 using Devdeb.Serialization.Default;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 
 namespace Devdeb.Network.TCP.Rpc
 {
-	public sealed class RpcClient<THandler, TRequestor> : BaseExpectingTcpClient
+	public sealed class RpcClient : BaseExpectingTcpClient
 	{
 		private readonly ISerializer<CommunicationMeta> _metaSerializer;
-		private readonly RpcHandler<THandler> _handler;
-		private RpcRequestor<TRequestor> _requestor;
+		private readonly ControllersRouter _controllersRouter;
+		private readonly RequestorCollection _requestors;
 
-		public RpcClient(IPAddress iPAddress, int port, THandler handler) : base(iPAddress, port)
+		public RpcClient(
+			IPAddress iPAddress,
+			int port,
+			IEnumerable<IControllerHandler> controllerHandlers,
+			RequestorCollection requestors
+		) : base(iPAddress, port)
 		{
 			_metaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
-			_handler = new RpcHandler<THandler>(handler);
+			_controllersRouter = new ControllersRouter(controllerHandlers);
+			_requestors = requestors;
 		}
 
-		protected override void NotifyStarted() => _requestor = RpcRequestor<TRequestor>.Create(TcpCommunication);
+		protected override void NotifyStarted() => _requestors.InitializeRequestors(TcpCommunication);
 
 		protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
 		{
@@ -39,19 +46,17 @@ namespace Devdeb.Network.TCP.Rpc
 				{
 					case CommunicationMeta.PackageType.Request:
 						{
-							_handler.HandleRequest(tcpCommunication, meta, buffer, offset);
+							_controllersRouter.RouteToController(tcpCommunication, meta, buffer, offset);
 							break;
 						}
 					case CommunicationMeta.PackageType.Response:
 						{
-							_requestor.HandleResponse(meta, buffer, offset);
+							_requestors.HandleResponse(meta, buffer, offset);
 							break;
 						}
 					default: throw new Exception($"Invalid value {meta.Type} for {nameof(meta.Type)}.");
 				}
 			});
 		}
-
-		public TRequestor Requestor => (TRequestor)(object)_requestor;
 	}
 }

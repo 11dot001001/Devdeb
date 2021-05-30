@@ -10,8 +10,8 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server
 	{
 		private readonly Dictionary<Guid, StudentVm> _students;
 		private static int _freeId;
-		private static object _freeIdLocker = new object();
-
+		private static readonly object _freeIdLocker = new object();
+		
 		public ServerStudentContoller()
 		{
 			_freeId = 0;
@@ -22,15 +22,16 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server
 		{
 			get
 			{
-				Console.WriteLine($"Requested free id {_freeId}.");
 				lock (_freeIdLocker)
+				{
+					Console.WriteLine($"Returned id {_freeId}.");
 					return _freeId++;
+				}
 			}
 		}
 
-		public async Task<Guid> AddStudent(StudentFm studentFm, int testValue)
+		public Task<Guid> AddStudent(StudentFm studentFm, int testValue)
 		{
-			
 			Guid studentId = Guid.NewGuid();
 
 			lock (_students)
@@ -46,7 +47,7 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server
 
 			Console.WriteLine($"Student {studentFm.Name} was added with id {studentId}. TestValue {testValue}.");
 
-			return studentId;
+			return Task.FromResult(studentId);
 		}
 		public void DeleteStudent(Guid id)
 		{

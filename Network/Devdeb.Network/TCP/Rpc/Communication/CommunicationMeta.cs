@@ -9,13 +9,13 @@
 		}
 
 		public PackageType Type;
+		public int ControllerId;
 		public int MethodId;
-		/// <remarks>Uses for definition of relations between request and response contexts.</remarks>
-		public int Code;
+		public int ContextId;
 
 		public override string ToString()
 		{
-			return $"MethodId: {MethodId}. Code: {Code}. Type: {Type}.";
+			return $"ControllerId: {ControllerId}. MethodId: {MethodId}. ContextId: {ContextId}. Type: {Type}.";
 		}
 	}
 }

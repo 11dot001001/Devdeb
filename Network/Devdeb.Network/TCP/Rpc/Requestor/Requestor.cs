@@ -10,7 +10,7 @@ using Devdeb.Network.TCP.Rpc.Communication;
 
 namespace Devdeb.Network.TCP.Rpc.Requestor
 {
-	public class RpcRequestor<TRequestor> : DispatchProxy
+	public class Requestor<TRequestor> : DispatchProxy, IRequestor
 	{
 		private struct ReceivedResponce
 		{
@@ -33,7 +33,7 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 				if (communicationMethodMeta.IsAwaitingResult && communicationMethodMeta.IsAsyncAwaitingResult)
 				{
 
-					ConvertResult = typeof(RpcRequestor<TRequestor>)
+					ConvertResult = typeof(Requestor<TRequestor>)
 									.GetMethod(nameof(Convert), BindingFlags.Static | BindingFlags.NonPublic)
 									.MakeGenericMethod(CommunicationMethodMeta.ResultType);
 				}
@@ -42,15 +42,15 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 		private class ResponceWaitingMeta
 		{
 			public int MethodId;
-			public int Code;
+			public int ContextId;
 			public TaskCompletionSource<ReceivedResponce> TaskCompletionSource;
 		}
 
-		static public RpcRequestor<TRequestor> Create(TcpCommunication tcpCommunication)
+		static public Requestor<TRequestor> Create(TcpCommunication tcpCommunication, int controllerId)
 		{
-			RpcRequestor<TRequestor> proxy = (RpcRequestor<TRequestor>)(object)Create<TRequestor, RpcRequestor<TRequestor>>();
+			Requestor<TRequestor> proxy = (Requestor<TRequestor>)(object)Create<TRequestor, Requestor<TRequestor>>();
 
-			proxy.Initialize(tcpCommunication);
+			proxy.Initialize(tcpCommunication, controllerId);
 
 			return proxy;
 		}
@@ -59,25 +59,27 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 		private RequestorMethodMeta[] _meta;
 		private ISerializer<CommunicationMeta> _requestMetaSerializer;
 		private HashSet<ResponceWaitingMeta> _responceWaitingMetas;
+		private int _controllerId;
 
-		private void Initialize(TcpCommunication tcpCommunication)
+		private void Initialize(TcpCommunication tcpCommunication, int controllerId)
 		{
 			_tcpCommunication = tcpCommunication ?? throw new ArgumentNullException(nameof(tcpCommunication));
 			_requestMetaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
 			_responceWaitingMetas = new HashSet<ResponceWaitingMeta>();
+			_controllerId = controllerId;
 
 			CommunicationMethodMeta[] methodsMeta = new CommunicationMethodsMetaBuilder<TRequestor>().AddPublicInstanceMethods().Build();
 			_meta = methodsMeta.Select(x => new RequestorMethodMeta(x)).ToArray();
 		}
 
-		internal void HandleResponse(CommunicationMeta meta, byte[] buffer, int offset)
+		public void HandleResponse(CommunicationMeta meta, byte[] buffer, int offset)
 		{
 			ResponceWaitingMeta responceMeta;
 			lock (_responceWaitingMetas)
 			{
 				responceMeta = _responceWaitingMetas.First(x =>
 				x.MethodId == meta.MethodId &&
-				x.Code == meta.Code
+				x.ContextId == meta.ContextId
 				);
 				_responceWaitingMetas.Remove(responceMeta);
 			}
@@ -104,8 +106,9 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 			CommunicationMeta requestMeta = new CommunicationMeta
 			{
 				Type = CommunicationMeta.PackageType.Request,
+				ControllerId = _controllerId,
 				MethodId = methodMeta.Id,
-				Code = requestCode
+				ContextId = requestCode
 			};
 
 			int bufferLength = _requestMetaSerializer.Size(requestMeta);
@@ -129,7 +132,7 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 			lock (_responceWaitingMetas)
 				_responceWaitingMetas.Add(new ResponceWaitingMeta
 				{
-					Code = requestCode,
+					ContextId = requestCode,
 					MethodId = methodMeta.Id,
 					TaskCompletionSource = taskCompletionSource
 				});
