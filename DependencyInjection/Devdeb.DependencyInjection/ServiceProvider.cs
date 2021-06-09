@@ -32,15 +32,25 @@ namespace Devdeb.DependencyInjection
 							return _rootServiceProvider.GetService(serviceType);
 
 						if (!_singletonServices.TryGetValue(serviceType, out object instance))
-							_singletonServices.Add(serviceType, instance = serviceConfiguration.Initialize(this));
-
+						{
+							lock (_singletonServices)
+							{
+								if (!_singletonServices.TryGetValue(serviceType, out instance))
+									_singletonServices.Add(serviceType, instance = serviceConfiguration.Initialize(this));
+							}
+						}
 						return instance;
 					}
 				case LifeTimeType.Scoped:
 					{
 						if (!_scopedServices.TryGetValue(serviceType, out object instance))
-							_scopedServices.Add(serviceType, instance = serviceConfiguration.Initialize(this));
-
+						{
+							lock (_scopedServices)
+							{
+								if (!_scopedServices.TryGetValue(serviceType, out instance))
+									_scopedServices.Add(serviceType, instance = serviceConfiguration.Initialize(this));
+							}
+						}
 						return instance;
 					}
 				case LifeTimeType.Transient:

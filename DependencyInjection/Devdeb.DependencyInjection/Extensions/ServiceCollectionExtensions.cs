@@ -9,7 +9,11 @@ namespace Devdeb.DependencyInjection.Extensions
 	{
 		static public void AddSingleton(this IServiceCollection collection, Type serviceType)
 		{
-			collection.AddSingleton(serviceType, serviceType, GetDefaultInitialization(serviceType));
+			AddSingleton(collection, serviceType, serviceType);
+		}
+		static public void AddSingleton(this IServiceCollection collection, Type serviceType, Type implementationType)
+		{
+			collection.AddSingleton(serviceType, implementationType, GetDefaultInitialization(implementationType));
 		}
 		static public void AddSingleton<TService>(this IServiceCollection collection) where TService : class
 		{
@@ -17,9 +21,7 @@ namespace Devdeb.DependencyInjection.Extensions
 		}
 		static public void AddSingleton<TService, TImplementation>(this IServiceCollection collection) where TImplementation : class
 		{
-			Type implementationType = typeof(TImplementation);
-
-			collection.AddSingleton(typeof(TService), implementationType, GetDefaultInitialization(implementationType));
+			AddSingleton(collection, typeof(TService), typeof(TImplementation));
 		}
 		static public void AddSingleton<TService, TImplementation>(this IServiceCollection collection, Func<IServiceProvider, TImplementation> initialize)
 			where TImplementation : class
@@ -32,7 +34,11 @@ namespace Devdeb.DependencyInjection.Extensions
 
 		static public void AddScoped(this IServiceCollection collection, Type serviceType)
 		{
-			collection.AddScoped(serviceType, serviceType, GetDefaultInitialization(serviceType));
+			AddScoped(collection, serviceType, serviceType);
+		}
+		static public void AddScoped(this IServiceCollection collection, Type serviceType, Type implementationType)
+		{
+			collection.AddScoped(serviceType, implementationType, GetDefaultInitialization(implementationType));
 		}
 		static public void AddScoped<TService>(this IServiceCollection collection) where TService : class
 		{
@@ -40,9 +46,7 @@ namespace Devdeb.DependencyInjection.Extensions
 		}
 		static public void AddScoped<TService, TImplementation>(this IServiceCollection collection) where TImplementation : class
 		{
-			Type implementationType = typeof(TImplementation);
-
-			collection.AddScoped(typeof(TService), implementationType, GetDefaultInitialization(implementationType));
+			AddScoped(collection, typeof(TService), typeof(TImplementation));
 		}
 		static public void AddScoped<TService, TImplementation>(this IServiceCollection collection, Func<IServiceProvider, TImplementation> initialize)
 			where TImplementation : class
@@ -55,7 +59,11 @@ namespace Devdeb.DependencyInjection.Extensions
 
 		static public void AddTransient(this IServiceCollection collection, Type serviceType)
 		{
-			collection.AddTransient(serviceType, serviceType, GetDefaultInitialization(serviceType));
+			AddTransient(collection, serviceType, serviceType);
+		}
+		static public void AddTransient(this IServiceCollection collection, Type serviceType, Type implementationType)
+		{
+			collection.AddTransient(serviceType, implementationType, GetDefaultInitialization(implementationType));
 		}
 		static public void AddTransient<TService>(this IServiceCollection collection) where TService : class
 		{
@@ -63,9 +71,7 @@ namespace Devdeb.DependencyInjection.Extensions
 		}
 		static public void AddTransient<TService, TImplementation>(this IServiceCollection collection) where TImplementation : class
 		{
-			Type implementationType = typeof(TImplementation);
-
-			collection.AddTransient(typeof(TService), implementationType, GetDefaultInitialization(implementationType));
+			AddTransient(collection, typeof(TService), typeof(TImplementation));
 		}
 		static public void AddTransient<TService, TImplementation>(this IServiceCollection collection, Func<IServiceProvider, TImplementation> initialize)
 			where TImplementation : class

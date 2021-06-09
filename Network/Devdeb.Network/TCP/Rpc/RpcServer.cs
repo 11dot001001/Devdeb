@@ -1,4 +1,6 @@
-﻿using Devdeb.Network.TCP.Communication;
+﻿using Devdeb.DependencyInjection;
+using Devdeb.DependencyInjection.Extensions;
+using Devdeb.Network.TCP.Communication;
 using Devdeb.Network.TCP.Expecting;
 using Devdeb.Network.TCP.Rpc.Communication;
 using Devdeb.Network.TCP.Rpc.Handler;
@@ -7,8 +9,10 @@ using Devdeb.Serialization;
 using Devdeb.Serialization.Default;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using IServiceProvider = Devdeb.DependencyInjection.IServiceProvider;
 
 namespace Devdeb.Network.TCP.Rpc
 {
@@ -18,19 +22,30 @@ namespace Devdeb.Network.TCP.Rpc
 		private readonly Dictionary<TcpCommunication, RequestorCollection> _connections;
 		private readonly ControllersRouter _controllersRouter;
 		private readonly Func<RequestorCollection> _createRequestors;
+		private readonly IServiceProvider _serviceProvider;
 
 		public RpcServer(
 			IPAddress iPAddress,
 			int port,
 			int backlog,
-			IEnumerable<IControllerHandler> controllerHandlers,
-			Func<RequestorCollection> createRequestors
+			Dictionary<Type, Type> controllers,
+			Func<RequestorCollection> createRequestors,
+			Action<IServiceCollection> addServices = null
 		) : base(iPAddress, port, backlog)
 		{
 			_metaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
 			_connections = new Dictionary<TcpCommunication, RequestorCollection>();
-			_controllersRouter = new ControllersRouter(controllerHandlers);
 			_createRequestors = createRequestors;
+
+			ServiceCollection serviceCollection = new ServiceCollection();
+			_controllersRouter = new ControllersRouter(controllers.Select(controllerSurjection =>
+			{
+				serviceCollection.AddSingleton(controllerSurjection.Key, controllerSurjection.Value);
+				return (IControllerHandler)Activator.CreateInstance(typeof(ControllerHandler<>).MakeGenericType(controllerSurjection.Key));
+			}));
+
+			addServices?.Invoke(serviceCollection);
+			_serviceProvider = serviceCollection.BuildServiceProvider();
 		}
 
 		protected override void ProcessAccept(TcpCommunication tcpCommunication)
@@ -52,10 +67,12 @@ namespace Devdeb.Network.TCP.Rpc
 				int offset = 0;
 				CommunicationMeta meta = _metaSerializer.Deserialize(buffer, ref offset);
 
+				IServiceProvider scopedServiceProvider = _serviceProvider.CreateScope();
+
 				switch (meta.Type)
 				{
 					case CommunicationMeta.PackageType.Request:
-						_controllersRouter.RouteToController(tcpCommunication, meta, buffer, offset);
+						_controllersRouter.RouteToController(scopedServiceProvider, tcpCommunication, meta, buffer, offset);
 						break;
 					case CommunicationMeta.PackageType.Response:
 						{

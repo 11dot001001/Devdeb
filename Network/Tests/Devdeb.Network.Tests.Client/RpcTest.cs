@@ -4,6 +4,7 @@ using Devdeb.Network.TCP.Rpc.Requestor;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Client;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Client;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Models;
 using System;
 using System.Collections.Generic;
@@ -25,13 +26,13 @@ namespace Devdeb.Network.Tests.Client
 
 		public async Task Test()
 		{
-			List<IControllerHandler> controllerHandlers = new List<IControllerHandler>
+			Dictionary<Type, Type> controllers = new Dictionary<Type, Type>
 			{
-				new ControllerHandler<IClientController>(new ClientController()),
+				[typeof(IClientController)] = typeof(ClientController),
 			};
 			ClientRequestors requestors = new ClientRequestors();
 
-			RpcClient client = new RpcClient(_iPAddress, _port, controllerHandlers, requestors);
+			RpcClient client = new RpcClient(_iPAddress, _port, controllers, requestors);
 			client.Start();
 
 			for (; ; )

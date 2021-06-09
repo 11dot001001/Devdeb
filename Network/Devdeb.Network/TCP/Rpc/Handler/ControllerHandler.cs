@@ -1,4 +1,5 @@
-﻿using Devdeb.Network.TCP.Communication;
+﻿using Devdeb.DependencyInjection.Extensions;
+using Devdeb.Network.TCP.Communication;
 using Devdeb.Network.TCP.Rpc.Communication;
 using Devdeb.Serialization;
 using Devdeb.Serialization.Default;
@@ -6,6 +7,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using IServiceProvider = Devdeb.DependencyInjection.IServiceProvider;
 
 namespace Devdeb.Network.TCP.Rpc.Handler
 {
@@ -30,25 +32,26 @@ namespace Devdeb.Network.TCP.Rpc.Handler
 			}
 		}
 
-		private readonly THandler _controller;
 		private readonly HandlerMethodMeta[] _meta;
 		private readonly ISerializer<CommunicationMeta> _metaSerializer;
 
-		public ControllerHandler(THandler handlerInstance)
+		public ControllerHandler()
 		{
-			_controller = handlerInstance ?? throw new ArgumentNullException(nameof(handlerInstance));
 			CommunicationMethodMeta[] methodsMeta = new CommunicationMethodsMetaBuilder<THandler>().AddPublicInstanceMethods().Build();
 			_metaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
 			_meta = methodsMeta.Select(x => new HandlerMethodMeta(x)).ToArray();
 		}
 
 		public void HandleRequest(
+			IServiceProvider serviceProvider,
 			TcpCommunication tcpCommunication,
 			CommunicationMeta meta,
 			byte[] buffer,
 			int offset
 		)
 		{
+			THandler controller = serviceProvider.GetRequiredService<THandler>();
+
 			HandlerMethodMeta handlerMethodMeta = _meta.First(x => x.CommunicationMethodMeta.Id == meta.MethodId);
 			var methodMeta = handlerMethodMeta.CommunicationMethodMeta;
 
@@ -56,7 +59,7 @@ namespace Devdeb.Network.TCP.Rpc.Handler
 
 			if (methodMeta.DoesNeedArguments)
 				arguments = methodMeta.ArgumentSerializer.Deserialize(buffer, ref offset);
-			object result = methodMeta.MethodInfo.Invoke(_controller, arguments);
+			object result = methodMeta.MethodInfo.Invoke(controller, arguments);
 
 			if (!methodMeta.IsAwaitingResult)
 				return;

@@ -1,6 +1,6 @@
 ﻿using Devdeb.Network.TCP.Rpc;
-using Devdeb.Network.TCP.Rpc.Handler;
 using Devdeb.Network.TCP.Rpc.Requestor;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Client;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server;
@@ -24,12 +24,13 @@ namespace Devdeb.Network.Tests.Server
 
 		public void Test()
 		{
-			List<IControllerHandler> controllerHandlers = new List<IControllerHandler>
+			Dictionary<Type, Type> controllers = new Dictionary<Type, Type>
 			{
-				new ControllerHandler<IStudentContoller>(new ServerStudentContoller()),
-				new ControllerHandler<ITeacherController>(new ServerTeacherController()),
+				[typeof(IStudentContoller)] = typeof(ServerStudentContoller),
+				[typeof(ITeacherController)] = typeof(ServerTeacherController)
 			};
-			RpcServer server = new RpcServer(_iPAddress, _port, _backlog, controllerHandlers, () => new ServerRequestors());
+
+			RpcServer server = new RpcServer(_iPAddress, _port, _backlog, controllers, () => new ServerRequestors(), x => x.AddDomain());
 
 			server.TestClientRequest = x => ((ServerRequestors)x).ClientController.HandleStudentUpdate(
 				Guid.NewGuid(),

@@ -3,6 +3,7 @@ using Devdeb.Network.TCP.Rpc.Communication;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using IServiceProvider = Devdeb.DependencyInjection.IServiceProvider;
 
 namespace Devdeb.Network.TCP.Rpc.Handler
 {
@@ -23,13 +24,14 @@ namespace Devdeb.Network.TCP.Rpc.Handler
 		}
 
 		public void RouteToController(
+			IServiceProvider serviceProvider,
 			TcpCommunication tcpCommunication,
 			CommunicationMeta meta,
 			byte[] buffer,
 			int offset
 		)
 		{
-			_controllerHandlers[meta.ControllerId].HandleRequest(tcpCommunication, meta, buffer, offset);
+			_controllerHandlers[meta.ControllerId].HandleRequest(serviceProvider, tcpCommunication, meta, buffer, offset);
 		}
 	}
 }

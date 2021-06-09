@@ -1,4 +1,5 @@
-﻿using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server;
+﻿using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Models;
 using System;
 using System.Collections.Generic;
@@ -8,14 +9,22 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server
 {
 	public class ServerStudentContoller : IStudentContoller
 	{
-		private readonly Dictionary<Guid, StudentVm> _students;
+		private static readonly Dictionary<Guid, StudentVm> _students;
 		private static int _freeId;
-		private static readonly object _freeIdLocker = new object();
-		
-		public ServerStudentContoller()
+		private static readonly object _freeIdLocker;
+
+		static ServerStudentContoller()
 		{
+			_freeIdLocker = new object();
 			_freeId = 0;
 			_students = new Dictionary<Guid, StudentVm>();
+		}
+
+		private readonly IDateTimeService _dateTimeService;
+
+		public ServerStudentContoller(IDateTimeService dateTimeService)
+		{
+			_dateTimeService = dateTimeService ?? throw new ArgumentNullException(nameof(dateTimeService));
 		}
 
 		public int FreeId
@@ -45,7 +54,13 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server
 					}
 				);
 
-			Console.WriteLine($"Student {studentFm.Name} was added with id {studentId}. TestValue {testValue}.");
+			Console.WriteLine(
+				$"####################\n" +
+				$"Student {studentFm.Name} was added with id {studentId}.\n" +
+				$"TestValue {testValue}.\n" +
+				$"Current date: {_dateTimeService.CurrentDateTime}.\n" +
+				$"####################"
+			);
 
 			return Task.FromResult(studentId);
 		}
