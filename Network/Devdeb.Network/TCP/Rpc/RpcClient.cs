@@ -22,6 +22,7 @@ namespace Devdeb.Network.TCP.Rpc
 		private readonly ControllersRouter _controllersRouter;
 		private readonly RequestorCollection _serverApi;
 		private readonly IServiceProvider _serviceProvider;
+		private readonly List<Type> _hostedServices;
 
 		public RpcClient(IPAddress iPAddress, int port, IStartup startup) : base(iPAddress, port)
 		{
@@ -41,10 +42,24 @@ namespace Devdeb.Network.TCP.Rpc
 			serviceCollection.AddScoped(startup.RequestorType, startup.RequestorType, _ => _serverApi);
 
 			startup.AddServices(serviceCollection);
+
+			startup.AddHostedServices(_hostedServices = new List<Type>());
+			_hostedServices.ForEach(serviceType => serviceCollection.AddSingleton(serviceType));
+
 			_serviceProvider = serviceCollection.BuildServiceProvider();
 		}
 
-		protected override void NotifyStarted() => _serverApi.InitializeRequestors(TcpCommunication);
+		public override void Start()
+		{
+			base.Start();
+			_serverApi.InitializeRequestors(TcpCommunication);
+			_hostedServices.ForEach(serviceType =>
+			{
+				IServiceProvider scopedServiceProvider = _serviceProvider.CreateScope();
+				IHostedService service = (IHostedService)scopedServiceProvider.GetService(serviceType);
+				_ = Task.Run(service.StartAsync);
+			});
+		}
 
 		protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
 		{

@@ -25,6 +25,7 @@ namespace Devdeb.Network.TCP
         }
 
         public int ReceivedBytesCount => _tcpCommunication.ReceivedBytesCount;
+        protected TcpCommunication TcpCommunication => _tcpCommunication;
 
         public void Receive(byte[] buffer, int offset, int count)
         {
@@ -62,7 +63,7 @@ namespace Devdeb.Network.TCP
             _tcpCommunication.SendWithSize(serializer, instance);
         }
 
-		public void Start()
+		public virtual void Start()
         {
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -89,19 +90,15 @@ namespace Devdeb.Network.TCP
             _tcpCommunication = new TcpCommunication(socket);
             _connectionProcessing.Start();
             _isStarted = true;
-            NotifyStarted();
             Console.WriteLine("Client has been started.");
         }
-        public void Stop()
+        public virtual void Stop()
         {
             _tcpCommunication.Shutdown();
             _connectionProcessing.Abort();
         }
 
         protected abstract void ProcessCommunication(TcpCommunication tcpCommunication);
-        protected virtual void NotifyStarted() { }
-
-        protected TcpCommunication TcpCommunication => _tcpCommunication;
 
         private void VerifyClientState()
         {

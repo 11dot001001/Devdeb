@@ -10,6 +10,7 @@ namespace Devdeb.Network.TCP.Rpc
 		Type RequestorType { get; }
 		Func<RequestorCollection> CreateRequestor { get; }
 		void AddControllers(Dictionary<Type, Type> controllerSurjection);
+		void AddHostedServices(List<Type> hostedServices);
 		void AddServices(IServiceCollection serviceCollection);
 	}
 }

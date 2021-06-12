@@ -10,7 +10,6 @@ namespace Devdeb.Tests.Network.Server
         private static readonly TcpCommunicationTest _tcpCommunicationTest;
         private static readonly DefaultTest _defaultTest;
         private static readonly ExpectingTcpTest _expectingTcpTest;
-        private static readonly RpcTest _rpcTest;
 
         static Program()
         {
@@ -19,9 +18,8 @@ namespace Devdeb.Tests.Network.Server
             _tcpCommunicationTest = new TcpCommunicationTest();
             _defaultTest = new DefaultTest();
             _expectingTcpTest = new ExpectingTcpTest();
-            _rpcTest = new RpcTest();
         }
 
-        static void Main(string[] args) => _rpcTest.Test();
+        static void Main(string[] args) { }
     }
 }

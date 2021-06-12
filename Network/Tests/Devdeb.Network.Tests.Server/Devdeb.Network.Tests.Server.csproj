@@ -8,7 +8,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Serialization\Devdeb.Serialization\Devdeb.Serialization.csproj" />
     <ProjectReference Include="..\..\Devdeb.Network\Devdeb.Network.csproj" />
-    <ProjectReference Include="..\Devdeb.Network.Tests.Rpc.BusinessLogic\Devdeb.Network.Tests.Rpc.BusinessLogic.csproj" />
   </ItemGroup>
 
 </Project>

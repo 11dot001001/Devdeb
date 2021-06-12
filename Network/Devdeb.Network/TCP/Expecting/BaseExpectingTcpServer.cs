@@ -21,7 +21,7 @@ namespace Devdeb.Network.TCP.Expecting
             _communicationsStates.Add(tcpCommunication, new CommunicationState());
         }
 
-        protected override void ProcessCommunication(TcpCommunication tcpCommunication)
+        protected sealed override void ProcessCommunication(TcpCommunication tcpCommunication)
         {
             CommunicationState communicationState = _communicationsStates[tcpCommunication];
             if (tcpCommunication.BufferBytesCount < communicationState.ExpectingBytesCount)

@@ -30,7 +30,7 @@ namespace Devdeb.Network.TCP
             _tcpCommunications = new Queue<TcpCommunication>();
         }
 
-        public void Start()
+        public virtual void Start()
         {
             _tcpListener.Listen(_backlog);
             _acceptingThread.Start();
