@@ -1,5 +1,7 @@
-﻿using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions;
+﻿using Devdeb.Network.TCP.Rpc.Requestor.Context;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Abstractions.Server;
+using Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Api;
 using Devdeb.Network.Tests.Rpc.BusinessLogic.Models;
 using System;
 using System.Collections.Generic;
@@ -21,10 +23,18 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server
 		}
 
 		private readonly IDateTimeService _dateTimeService;
+		private readonly IRequestorContext _requestorContext;
+		private readonly ClientApi _clientApi;
 
-		public ServerStudentContoller(IDateTimeService dateTimeService)
+		public ServerStudentContoller(
+			IDateTimeService dateTimeService,
+			IRequestorContext requestorContext,
+			ClientApi clientApi
+		)
 		{
 			_dateTimeService = dateTimeService ?? throw new ArgumentNullException(nameof(dateTimeService));
+			_requestorContext = requestorContext ?? throw new ArgumentNullException(nameof(requestorContext));
+			_clientApi = clientApi ?? throw new ArgumentNullException(nameof(clientApi));
 		}
 
 		public int FreeId
@@ -60,6 +70,11 @@ namespace Devdeb.Network.Tests.Rpc.BusinessLogic.Domain.Server
 				$"TestValue {testValue}.\n" +
 				$"Current date: {_dateTimeService.CurrentDateTime}.\n" +
 				$"####################"
+			);
+
+			_clientApi.ClientController.HandleStudentUpdate(
+				Guid.NewGuid(),
+				new StudentVm { Name = "maria ivanovna" }
 			);
 
 			return Task.FromResult(studentId);

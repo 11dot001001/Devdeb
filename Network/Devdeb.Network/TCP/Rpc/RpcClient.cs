@@ -20,32 +20,31 @@ namespace Devdeb.Network.TCP.Rpc
 	{
 		private readonly ISerializer<CommunicationMeta> _metaSerializer;
 		private readonly ControllersRouter _controllersRouter;
-		private readonly RequestorCollection _requestors;
+		private readonly RequestorCollection _serverApi;
 		private readonly IServiceProvider _serviceProvider;
 
-		public RpcClient(
-			IPAddress iPAddress,
-			int port,
-			Dictionary<Type, Type> controllers,
-			RequestorCollection requestors,
-			Action<IServiceCollection> addServices = null
-		) : base(iPAddress, port)
+		public RpcClient(IPAddress iPAddress, int port, IStartup startup) : base(iPAddress, port)
 		{
 			_metaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
-			_requestors = requestors;
+			_serverApi = startup.CreateRequestor();
 
 			ServiceCollection serviceCollection = new ServiceCollection();
+
+			Dictionary<Type, Type> controllers = new Dictionary<Type, Type>();
+			startup.AddControllers(controllers);
 			_controllersRouter = new ControllersRouter(controllers.Select(controllerSurjection =>
 			{
-				serviceCollection.AddSingleton(controllerSurjection.Key, controllerSurjection.Value);
+				serviceCollection.AddScoped(controllerSurjection.Key, controllerSurjection.Value);
 				return (IControllerHandler)Activator.CreateInstance(typeof(ControllerHandler<>).MakeGenericType(controllerSurjection.Key));
 			}));
 
-			addServices?.Invoke(serviceCollection);
+			serviceCollection.AddScoped(startup.RequestorType, startup.RequestorType, _ => _serverApi);
+
+			startup.AddServices(serviceCollection);
 			_serviceProvider = serviceCollection.BuildServiceProvider();
 		}
 
-		protected override void NotifyStarted() => _requestors.InitializeRequestors(TcpCommunication);
+		protected override void NotifyStarted() => _serverApi.InitializeRequestors(TcpCommunication);
 
 		protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
 		{
@@ -68,7 +67,7 @@ namespace Devdeb.Network.TCP.Rpc
 						}
 					case CommunicationMeta.PackageType.Response:
 						{
-							_requestors.HandleResponse(meta, buffer, offset);
+							_serverApi.HandleResponse(meta, buffer, offset);
 							break;
 						}
 					default: throw new Exception($"Invalid value {meta.Type} for {nameof(meta.Type)}.");

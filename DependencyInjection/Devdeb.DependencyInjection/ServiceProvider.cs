@@ -11,13 +11,29 @@ namespace Devdeb.DependencyInjection
 		private readonly Dictionary<Type, object> _singletonServices;
 		private readonly IServiceProvider _rootServiceProvider;
 
-		public ServiceProvider(Dictionary<Type, ServiceСonfiguration> configurations) : this(configurations, null) { }
-		public ServiceProvider(Dictionary<Type, ServiceСonfiguration> configurations, IServiceProvider rootServiceProvider)
+		public ServiceProvider(Dictionary<Type, ServiceСonfiguration> configurations) : this(configurations, null) 
+		{
+			Type servicProviderInterface = typeof(IServiceProvider);
+
+			if (configurations.TryGetValue(servicProviderInterface, out _))
+				throw new Exception($"Unable to register type {nameof(IServiceProvider)}");
+
+			_configurations.Add(servicProviderInterface, new ServiceСonfiguration
+			{
+				ServiceType = servicProviderInterface,
+				ImplementationType = typeof(ServiceProvider),
+				LifeTimeType = LifeTimeType.Scoped,
+				Initialize = null
+			});
+		}
+		internal ServiceProvider(Dictionary<Type, ServiceСonfiguration> configurations, IServiceProvider rootServiceProvider)
 		{
 			_configurations = configurations ?? throw new ArgumentNullException(nameof(configurations));
 			_rootServiceProvider = rootServiceProvider;
 			_scopedServices = new Dictionary<Type, object>();
 			_singletonServices = new Dictionary<Type, object>();
+
+			_scopedServices.Add(typeof(IServiceProvider), this);
 		}
 
 		public object GetService(Type serviceType)

@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\DependencyInjection\Devdeb.DependencyInjection\Devdeb.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\Devdeb.Network\Devdeb.Network.csproj" />
   </ItemGroup>
 
 </Project>
