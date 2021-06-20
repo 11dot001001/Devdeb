@@ -4,9 +4,9 @@ using Devdeb.Network.TCP.Communication;
 using Devdeb.Network.TCP.Expecting;
 using Devdeb.Network.TCP.Rpc.Communication;
 using Devdeb.Network.TCP.Rpc.Handler;
+using Devdeb.Network.TCP.Rpc.Pipelines;
 using Devdeb.Network.TCP.Rpc.Requestor;
-using Devdeb.Serialization;
-using Devdeb.Serialization.Default;
+using Devdeb.Network.TCP.Rpc.Requestor.Context;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,33 +18,39 @@ namespace Devdeb.Network.TCP.Rpc
 {
 	public sealed class RpcClient : BaseExpectingTcpClient
 	{
-		private readonly ISerializer<CommunicationMeta> _metaSerializer;
-		private readonly ControllersRouter _controllersRouter;
-		private readonly RequestorCollection _serverApi;
 		private readonly IServiceProvider _serviceProvider;
 		private readonly List<Type> _hostedServices;
+		private readonly PipelineEntryPointDelegate _runPipeline;
+
+		private TcpCommunication _tcpCommunication;
 
 		public RpcClient(IPAddress iPAddress, int port, IStartup startup) : base(iPAddress, port)
 		{
-			_metaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
-			_serverApi = startup.CreateRequestor();
+			RequestorCollection _serverApi = startup.CreateRequestor();
 
 			ServiceCollection serviceCollection = new ServiceCollection();
 
-			Dictionary<Type, Type> controllers = new Dictionary<Type, Type>();
-			startup.AddControllers(controllers);
-			_controllersRouter = new ControllersRouter(controllers.Select(controllerSurjection =>
+			Dictionary<Type, Type> controllerSurjection = new Dictionary<Type, Type>();
+			startup.AddControllers(controllerSurjection);
+			ControllersRouter controllersRouter = new ControllersRouter(controllerSurjection.Select(controller =>
 			{
-				serviceCollection.AddScoped(controllerSurjection.Key, controllerSurjection.Value);
-				return (IControllerHandler)Activator.CreateInstance(typeof(ControllerHandler<>).MakeGenericType(controllerSurjection.Key));
+				serviceCollection.AddScoped(controller.Key, controller.Value);
+				return (IControllerHandler)Activator.CreateInstance(typeof(ControllerHandler<>).MakeGenericType(controller.Key));
 			}));
+			serviceCollection.AddSingleton<ControllersRouter, ControllersRouter>(_ => controllersRouter);
+			serviceCollection.AddSingleton<RequestorCollection, RequestorCollection>(_ => _serverApi);
 
+			serviceCollection.AddScoped<IRequestorContext, RequestorContext>();
 			serviceCollection.AddScoped(startup.RequestorType, startup.RequestorType, _ => _serverApi);
 
-			startup.AddServices(serviceCollection);
+			startup.ConfigureServices(serviceCollection);
 
-			startup.AddHostedServices(_hostedServices = new List<Type>());
+			startup.ConfigureHostedServices(_hostedServices = new List<Type>());
 			_hostedServices.ForEach(serviceType => serviceCollection.AddSingleton(serviceType));
+
+			PipelineBuilder pipelineBuilder = new PipelineBuilder();
+			startup.ConfigurePipeline(pipelineBuilder);
+			_runPipeline = pipelineBuilder.Build();
 
 			_serviceProvider = serviceCollection.BuildServiceProvider();
 		}
@@ -52,7 +58,6 @@ namespace Devdeb.Network.TCP.Rpc
 		public override void Start()
 		{
 			base.Start();
-			_serverApi.InitializeRequestors(TcpCommunication);
 			_hostedServices.ForEach(serviceType =>
 			{
 				IServiceProvider scopedServiceProvider = _serviceProvider.CreateScope();
@@ -61,37 +66,37 @@ namespace Devdeb.Network.TCP.Rpc
 			});
 		}
 
+		protected override void Connected(TcpCommunication tcpCommunication)
+		{
+			base.Connected(_tcpCommunication = tcpCommunication);
+			_serviceProvider.GetRequiredService<RequestorCollection>().InitializeRequestors(_tcpCommunication);
+		}
 		protected override void Disconnected()
 		{
 			// stop all client handlers and other...
 		}
 
-		protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
+		protected override void ProcessCommunication(int receivedCount)
 		{
-			byte[] buffer = new byte[count];
-			tcpCommunication.Receive(buffer, 0, count);
+			CommunicationMeta meta = _tcpCommunication.Receive(CommunicationMetaSerializer.Default);
+			receivedCount -= CommunicationMetaSerializer.Default.Size;
 
-			Task.Factory.StartNew(() =>
+			byte[] buffer = null;
+			if (receivedCount != 0)
 			{
-				int offset = 0;
-				CommunicationMeta meta = _metaSerializer.Deserialize(buffer, ref offset);
+				buffer = new byte[receivedCount];
+				_tcpCommunication.Receive(buffer, 0, buffer.Length);
+			}
 
+			Task.Factory.StartNew(async () =>
+			{
 				IServiceProvider scopedServiceProvider = _serviceProvider.CreateScope();
+				RequestorContext context = (RequestorContext)scopedServiceProvider.GetRequiredService<IRequestorContext>();
+				context.SetTcpCommunication(_tcpCommunication);
+				context.SetCommunicationMeta(meta);
+				context.SetData(buffer);
 
-				switch (meta.Type)
-				{
-					case CommunicationMeta.PackageType.Request:
-						{
-							_controllersRouter.RouteToController(scopedServiceProvider, tcpCommunication, meta, buffer, offset);
-							break;
-						}
-					case CommunicationMeta.PackageType.Response:
-						{
-							_serverApi.HandleResponse(meta, buffer, offset);
-							break;
-						}
-					default: throw new Exception($"Invalid value {meta.Type} for {nameof(meta.Type)}.");
-				}
+				await _runPipeline(scopedServiceProvider);
 			});
 		}
 	}

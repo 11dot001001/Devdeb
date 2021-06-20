@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Devdeb.Serialization.Default;
+using System;
 
 namespace Devdeb.Serialization.Serializers.System
 {
@@ -6,8 +7,11 @@ namespace Devdeb.Serialization.Serializers.System
         where TEnum : Enum
         where TUnderlying : struct
     {
+        static public EnumSerializer<TEnum, TUnderlying> Default = new EnumSerializer<TEnum, TUnderlying>();
+
         private readonly IConstantLengthSerializer<TUnderlying> _underlyingSerializer;
 
+        public EnumSerializer() : this((IConstantLengthSerializer<TUnderlying>)DefaultSerializer<TUnderlying>.Instance) { }
         public EnumSerializer(IConstantLengthSerializer<TUnderlying> underlyingSerializer) : base(underlyingSerializer.Size)
         {
             Type enumUnderlyingType = Enum.GetUnderlyingType(typeof(TEnum));

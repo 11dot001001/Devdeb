@@ -8,6 +8,7 @@ using Contracts.Client.Controllers;
 using Client.App.Controllers;
 using Client.App.HostedServices;
 using Client.Domain;
+using Devdeb.Network.TCP.Rpc.Pipelines;
 
 namespace Client.App
 {
@@ -20,13 +21,17 @@ namespace Client.App
 		{
 			controllerSurjection.Add(typeof(IStudentController), typeof(StudentController));
 		}
-		public void AddHostedServices(List<Type> hostedServices)
+		public void ConfigureHostedServices(List<Type> hostedServices)
 		{
 			hostedServices.Add(typeof(MainLoopService));
 		}
-		public void AddServices(IServiceCollection serviceCollection) 
+		public void ConfigureServices(IServiceCollection serviceCollection) 
 		{
 			serviceCollection.AddDomain();
+		}
+		public void ConfigurePipeline(IPipelineBuilder pipelineBuilder)
+		{
+			pipelineBuilder.UseControllers();
 		}
 	}
 }

@@ -1,8 +1,6 @@
 ﻿using Devdeb.DependencyInjection.Extensions;
 using Devdeb.Network.TCP.Communication;
 using Devdeb.Network.TCP.Rpc.Communication;
-using Devdeb.Serialization;
-using Devdeb.Serialization.Default;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -33,12 +31,10 @@ namespace Devdeb.Network.TCP.Rpc.Handler
 		}
 
 		private readonly HandlerMethodMeta[] _meta;
-		private readonly ISerializer<CommunicationMeta> _metaSerializer;
 
 		public ControllerHandler()
 		{
 			CommunicationMethodMeta[] methodsMeta = new CommunicationMethodsMetaBuilder<THandler>().AddPublicInstanceMethods().Build();
-			_metaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
 			_meta = methodsMeta.Select(x => new HandlerMethodMeta(x)).ToArray();
 		}
 
@@ -68,9 +64,9 @@ namespace Devdeb.Network.TCP.Rpc.Handler
 				result = ((Task<object>)handlerMethodMeta.ConvertResult.Invoke(null, new[] { result })).Result;
 
 			meta.Type = CommunicationMeta.PackageType.Response;
-			buffer = new byte[_metaSerializer.Size(meta) + methodMeta.ResultSerializer.Size(result)];
+			buffer = new byte[CommunicationMetaSerializer.Default.Size + methodMeta.ResultSerializer.Size(result)];
 			offset = 0;
-			_metaSerializer.Serialize(meta, buffer, ref offset);
+			CommunicationMetaSerializer.Default.Serialize(meta, buffer, ref offset);
 			methodMeta.ResultSerializer.Serialize(result, buffer, ref offset);
 			tcpCommunication.SendWithSize(buffer, 0, buffer.Length);
 		}

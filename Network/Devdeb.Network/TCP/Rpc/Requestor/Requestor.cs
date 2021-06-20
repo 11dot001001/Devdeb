@@ -1,6 +1,4 @@
 ﻿using Devdeb.Network.TCP.Communication;
-using Devdeb.Serialization.Default;
-using Devdeb.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -57,14 +55,12 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 
 		private TcpCommunication _tcpCommunication;
 		private RequestorMethodMeta[] _meta;
-		private ISerializer<CommunicationMeta> _requestMetaSerializer;
 		private HashSet<ResponceWaitingMeta> _responceWaitingMetas;
 		private int _controllerId;
 
 		private void Initialize(TcpCommunication tcpCommunication, int controllerId)
 		{
 			_tcpCommunication = tcpCommunication ?? throw new ArgumentNullException(nameof(tcpCommunication));
-			_requestMetaSerializer = DefaultSerializer<CommunicationMeta>.Instance;
 			_responceWaitingMetas = new HashSet<ResponceWaitingMeta>();
 			_controllerId = controllerId;
 
@@ -111,14 +107,14 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 				ContextId = requestCode
 			};
 
-			int bufferLength = _requestMetaSerializer.Size(requestMeta);
+			int bufferLength = CommunicationMetaSerializer.Default.Size;
 			if (methodMeta.DoesNeedArguments)
 				bufferLength += methodMeta.ArgumentSerializer.Size(args);
 
 			byte[] buffer = new byte[bufferLength];
 			int offset = 0;
 
-			_requestMetaSerializer.Serialize(requestMeta, buffer, ref offset);
+			CommunicationMetaSerializer.Default.Serialize(requestMeta, buffer, ref offset);
 			if (methodMeta.DoesNeedArguments)
 				methodMeta.ArgumentSerializer.Serialize(args, buffer, ref offset);
 

@@ -21,11 +21,10 @@ namespace Devdeb.Network.TCP
             _serverIPAddress = serverIPAddress ?? throw new ArgumentNullException(nameof(serverIPAddress));
             _serverPort = serverPort;
             _maxConnectionAttempts = maxConnectionAttempts;
-            _connectionProcessing = new Thread(ProcessCommunication);
+            _connectionProcessing = new Thread(ProcessCommunicationLoop);
         }
 
         public int ReceivedBytesCount => _tcpCommunication.ReceivedBytesCount;
-        protected TcpCommunication TcpCommunication => _tcpCommunication;
 
         public void Receive(byte[] buffer, int offset, int count)
         {
@@ -88,6 +87,7 @@ namespace Devdeb.Network.TCP
             }
 
             _tcpCommunication = new TcpCommunication(socket);
+            Connected(_tcpCommunication);
             _connectionProcessing.Start();
             _isStarted = true;
             Console.WriteLine("Client has been started.");
@@ -98,7 +98,8 @@ namespace Devdeb.Network.TCP
             _tcpCommunication.Close();
         }
 
-        protected abstract void ProcessCommunication(TcpCommunication tcpCommunication);
+        protected abstract void Connected(TcpCommunication tcpCommunication);
+        protected abstract void ProcessCommunication();
         protected abstract void Disconnected();
 
         private void VerifyClientState()
@@ -106,7 +107,7 @@ namespace Devdeb.Network.TCP
             if (!_isStarted)
                 throw new Exception("The client wasn't started.");
         }
-        private void ProcessCommunication()
+        private void ProcessCommunicationLoop()
         {
             for (; ; )
             {
@@ -119,7 +120,7 @@ namespace Devdeb.Network.TCP
 
                 _tcpCommunication.SendBuffer();
                 _tcpCommunication.ReceiveToBuffer();
-                ProcessCommunication(_tcpCommunication);
+                ProcessCommunication();
                 Thread.Sleep(1);
             }
         }

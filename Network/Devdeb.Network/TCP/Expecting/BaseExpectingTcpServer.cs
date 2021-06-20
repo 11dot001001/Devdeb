@@ -43,6 +43,6 @@ namespace Devdeb.Network.TCP.Expecting
             ProcessCommunication(tcpCommunication, communicationState.ExpectingBytesCount);
             _communicationsStates[tcpCommunication] = new CommunicationState();
         }
-        protected abstract void ProcessCommunication(TcpCommunication tcpCommunication, int count);
+        protected abstract void ProcessCommunication(TcpCommunication tcpCommunication, int receivedCount);
     }
 }
