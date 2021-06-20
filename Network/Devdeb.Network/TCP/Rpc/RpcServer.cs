@@ -46,7 +46,7 @@ namespace Devdeb.Network.TCP.Rpc
 			serviceCollection.AddScoped(
 				startup.RequestorType,
 				startup.RequestorType,
-				x =>_connectionRequestors[x.GetRequiredService<IRequestorContext>().TcpCommunication]
+				x => _connectionRequestors[x.GetRequiredService<IRequestorContext>().TcpCommunication]
 			);
 
 			startup.AddServices(serviceCollection);
@@ -68,13 +68,21 @@ namespace Devdeb.Network.TCP.Rpc
 			});
 		}
 
+		protected override void Disconnected(TcpCommunication tcpCommunication)
+		{
+			// stop all client handlers and other...
+			lock (_connectionRequestors)
+				_connectionRequestors.Remove(tcpCommunication);
+		}
+
 		protected override void ProcessAccept(TcpCommunication tcpCommunication)
 		{
 			base.ProcessAccept(tcpCommunication);
 
 			RequestorCollection requestor = _createRequestors();
 			requestor.InitializeRequestors(tcpCommunication);
-			_connectionRequestors.Add(tcpCommunication, requestor);
+			lock(_connectionRequestors)
+				_connectionRequestors.Add(tcpCommunication, requestor);
 		}
 
 		protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
@@ -91,7 +99,7 @@ namespace Devdeb.Network.TCP.Rpc
 
 				RequestorContext requestorContext = (RequestorContext)scopedServiceProvider.GetRequiredService<IRequestorContext>();
 				requestorContext.SetTcpCommunication(tcpCommunication);
-				
+
 				switch (meta.Type)
 				{
 					case CommunicationMeta.PackageType.Request:

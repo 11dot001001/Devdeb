@@ -18,10 +18,16 @@ namespace Devdeb.Network.TCP.Expecting
         protected override void ProcessAccept(TcpCommunication tcpCommunication)
         {
             Console.WriteLine($"{tcpCommunication.Socket.RemoteEndPoint} was accepted.");
-            _communicationsStates.Add(tcpCommunication, new CommunicationState());
+            lock(_communicationsStates)
+                _communicationsStates.Add(tcpCommunication, new CommunicationState());
         }
 
-        protected sealed override void ProcessCommunication(TcpCommunication tcpCommunication)
+		protected override void Disconnected(TcpCommunication tcpCommunication)
+		{
+            lock (_communicationsStates)
+                _communicationsStates.Remove(tcpCommunication);
+        }
+		protected sealed override void ProcessCommunication(TcpCommunication tcpCommunication)
         {
             CommunicationState communicationState = _communicationsStates[tcpCommunication];
             if (tcpCommunication.BufferBytesCount < communicationState.ExpectingBytesCount)

@@ -61,6 +61,11 @@ namespace Devdeb.Network.TCP.Rpc
 			});
 		}
 
+		protected override void Disconnected()
+		{
+			// stop all client handlers and other...
+		}
+
 		protected override void ProcessCommunication(TcpCommunication tcpCommunication, int count)
 		{
 			byte[] buffer = new byte[count];

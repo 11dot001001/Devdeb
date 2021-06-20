@@ -19,6 +19,6 @@ namespace Devdeb.Network.Tests.Client
             _expectingTcpTest = new ExpectingTcpTest();
         }
 
-        static void Main(string[] args) { }
+        static void Main(string[] args) => _defaultTest.Test();
     }
 }

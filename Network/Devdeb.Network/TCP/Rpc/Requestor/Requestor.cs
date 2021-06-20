@@ -78,8 +78,8 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 			lock (_responceWaitingMetas)
 			{
 				responceMeta = _responceWaitingMetas.First(x =>
-				x.MethodId == meta.MethodId &&
-				x.ContextId == meta.ContextId
+					x.MethodId == meta.MethodId &&
+					x.ContextId == meta.ContextId
 				);
 				_responceWaitingMetas.Remove(responceMeta);
 			}

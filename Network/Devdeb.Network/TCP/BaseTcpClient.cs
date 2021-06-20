@@ -7,7 +7,7 @@ using Devdeb.Network.TCP.Communication;
 
 namespace Devdeb.Network.TCP
 {
-    public abstract class BaseTcpClient
+    public abstract class BaseTcpClient : IDisposable
     {
         private readonly Thread _connectionProcessing;
         private readonly IPAddress _serverIPAddress;
@@ -94,11 +94,12 @@ namespace Devdeb.Network.TCP
         }
         public virtual void Stop()
         {
-            _tcpCommunication.Shutdown();
             _connectionProcessing.Abort();
+            _tcpCommunication.Close();
         }
 
         protected abstract void ProcessCommunication(TcpCommunication tcpCommunication);
+        protected abstract void Disconnected();
 
         private void VerifyClientState()
         {
@@ -109,11 +110,20 @@ namespace Devdeb.Network.TCP
         {
             for (; ; )
             {
+                if (_tcpCommunication.IsShutdown || _tcpCommunication.IsClosed)
+                {
+                    _tcpCommunication.Dispose();
+                    Disconnected();
+                    break;
+                }
+
                 _tcpCommunication.SendBuffer();
                 _tcpCommunication.ReceiveToBuffer();
                 ProcessCommunication(_tcpCommunication);
                 Thread.Sleep(1);
             }
         }
-    }
+
+		public void Dispose() => _tcpCommunication.Dispose();
+	}
 }

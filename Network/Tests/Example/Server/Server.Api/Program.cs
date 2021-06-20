@@ -1,5 +1,7 @@
 ﻿using Devdeb.Network.TCP.Rpc;
+using System;
 using System.Net;
+using System.Text;
 
 namespace Server.App
 {
@@ -11,6 +13,7 @@ namespace Server.App
 
 		static void Main(string[] args)
 		{
+			Console.OutputEncoding = Encoding.UTF8;
 			RpcServer server = new RpcServer(_iPAddress, _port, _backlog, new Startup());
 			server.Start();
 		}

@@ -6,7 +6,7 @@ using System.Net.Sockets;
 
 namespace Devdeb.Network.TCP.Communication
 {
-	public class TcpCommunication
+	public class TcpCommunication : IDisposable
 	{
 		private class Buffer
 		{
@@ -112,7 +112,7 @@ namespace Devdeb.Network.TCP.Communication
 					Array.Copy(Data, Offset, buffer, offset, count);
 
 					Count -= count;
-                    Offset = Count == 0 ? 0 : Offset + count;
+					Offset = Count == 0 ? 0 : Offset + count;
 				}
 			}
 			public T Read<T>(ISerializer<T> serializer, int count)
@@ -130,7 +130,7 @@ namespace Devdeb.Network.TCP.Communication
 					bool needCount = serializer.Flags.HasFlag(SerializerFlags.NeedCount);
 					result = serializer.Deserialize(Data, Offset, needCount ? (int?)count : null);
 					Count -= count;
-                    Offset = Count == 0 ? 0 : Offset + count;
+					Offset = Count == 0 ? 0 : Offset + count;
 				}
 				return result;
 			}
@@ -159,6 +159,10 @@ namespace Devdeb.Network.TCP.Communication
 		private readonly Buffer _sendingBuffer;
 		private readonly object _receivingLock;
 		private readonly object _sendingLock;
+		private readonly object _disposingLock;
+		private bool _isShutdown;
+		private bool _isClosed;
+		private bool _isDisposed;
 
 		public TcpCommunication(Socket tcpSocket)
 		{
@@ -171,11 +175,14 @@ namespace Devdeb.Network.TCP.Communication
 			_receivingBuffer = new Buffer(tcpSocket.ReceiveBufferSize);
 			_receivingLock = new object();
 			_sendingLock = new object();
+			_disposingLock = new object();
 		}
 
 		public Socket Socket => _tcpSocket;
 		public int ReceivedBytesCount => _receivingBuffer.Count + _tcpSocket.Available;
 		public int BufferBytesCount => _receivingBuffer.Count;
+		public bool IsShutdown => _isShutdown;
+		public bool IsClosed => _isClosed;
 
 		public void Receive(byte[] buffer, int offset, int count)
 		{
@@ -200,6 +207,9 @@ namespace Devdeb.Network.TCP.Communication
 			SocketError socketError = SocketError.Success;
 			lock (_receivingLock)
 			{
+				if (_isClosed)
+					throw new Exception("Socket was closed.");
+
 				int receivingBufferCount = _receivingBuffer.Count;
 				if (receivingBufferCount != 0)
 				{
@@ -237,8 +247,13 @@ namespace Devdeb.Network.TCP.Communication
 			int sentBytesCount = 0;
 
 			lock (_sendingLock)
+			{
+				if (_isClosed)
+					return;
+
 				if (_sendingBuffer.Count == 0)
 					sentBytesCount = _tcpSocket.Send(buffer, offset, count, SocketFlags.None, out socketError);
+			}
 
 			if (socketError != SocketError.Success && socketError != SocketError.WouldBlock)
 				Shutdown(socketError);
@@ -260,6 +275,9 @@ namespace Devdeb.Network.TCP.Communication
 			SocketError socketError = SocketError.Success;
 			lock (_receivingLock)
 			{
+				if (_isClosed)
+					return;
+
 				lock (_receivingBuffer.DataLock)
 				{
 					int readCount = _tcpSocket.Available;
@@ -292,6 +310,9 @@ namespace Devdeb.Network.TCP.Communication
 
 				lock (_sendingLock)
 				{
+					if (_isClosed)
+						return;
+
 					sentBytesCount = _tcpSocket.Send(
 						_sendingBuffer.Data,
 						_sendingBuffer.Offset,
@@ -305,11 +326,42 @@ namespace Devdeb.Network.TCP.Communication
 					Shutdown(socketError);
 
 				_sendingBuffer.Count -= sentBytesCount;
-                _sendingBuffer.Offset = _sendingBuffer.Count == 0 ? 0 : _sendingBuffer.Offset + sentBytesCount;
+				_sendingBuffer.Offset = _sendingBuffer.Count == 0 ? 0 : _sendingBuffer.Offset + sentBytesCount;
 			}
 		}
 
-		public void Shutdown(SocketError socketError) => throw new Exception($"SocketError: {socketError}");
-		public void Shutdown() { }
+		public void Close()
+		{
+			if (!_isShutdown)
+				_isShutdown = true;
+
+			lock (_sendingLock)
+				lock (_receivingLock)
+				{
+					_isClosed = true;
+					_tcpSocket.Close();
+				}
+		}
+
+		private void Shutdown(SocketError socketError)
+		{
+			_isShutdown = true;
+			_tcpSocket.Shutdown(SocketShutdown.Send);
+		}
+
+		public void Dispose()
+		{
+			lock (_disposingLock)
+			{
+				if (_isDisposed)
+					return;
+
+				_isDisposed = true;
+			}
+
+			_receivingBuffer.Data = null;
+			_sendingBuffer.Data = null;
+			_tcpSocket.Dispose();
+		}
 	}
 }

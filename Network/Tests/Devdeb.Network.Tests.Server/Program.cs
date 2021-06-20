@@ -20,6 +20,6 @@ namespace Devdeb.Tests.Network.Server
             _expectingTcpTest = new ExpectingTcpTest();
         }
 
-        static void Main(string[] args) { }
+        static void Main(string[] args) => _defaultTest.Test();
     }
 }
