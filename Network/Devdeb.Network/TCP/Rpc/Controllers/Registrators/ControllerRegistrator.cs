@@ -11,15 +11,13 @@ namespace Devdeb.Network.TCP.Rpc.Controllers.Registrators
 			public Type ImplementationType { get; set; }
 		}
 
-		private readonly List<ControllerConfig> _configurations;
+		public ControllerRegistrator() => Configurations = new List<ControllerConfig>();
 
-		public ControllerRegistrator() => _configurations = new List<ControllerConfig>();
-
-		internal List<ControllerConfig> Configurations => _configurations;
+		internal List<ControllerConfig> Configurations { get; }
 
 		public void AddController<TInterface, TImplementation>() where TImplementation : TInterface
 		{
-			_configurations.Add(new ControllerConfig
+			Configurations.Add(new ControllerConfig
 			{
 				InterfaceType = typeof(TInterface),
 				ImplementationType = typeof(TImplementation),

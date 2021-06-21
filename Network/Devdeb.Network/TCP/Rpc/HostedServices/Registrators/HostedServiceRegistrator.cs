@@ -10,15 +10,13 @@ namespace Devdeb.Network.TCP.Rpc.HostedServices.Registrators
 			public Type ImplementationType { get; set; }
 		}
 
-		private readonly List<HostedServiceConfig> _configurations;
-
-		public HostedServiceRegistrator() => _configurations = new List<HostedServiceConfig>();
+		public HostedServiceRegistrator() => Configurations = new List<HostedServiceConfig>();
 		
-		internal List<HostedServiceConfig> Configurations => _configurations;
+		internal List<HostedServiceConfig> Configurations { get; }
 
 		public void AddHostedService<TImplementation>() where TImplementation : IHostedService
 		{
-			_configurations.Add(new HostedServiceConfig
+			Configurations.Add(new HostedServiceConfig
 			{
 				ImplementationType = typeof(TImplementation),
 			});

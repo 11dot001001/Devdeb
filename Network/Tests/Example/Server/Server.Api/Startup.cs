@@ -1,8 +1,5 @@
 ﻿using Devdeb.DependencyInjection;
-using Devdeb.Network.TCP.Rpc.Requestor;
 using Devdeb.Network.TCP.Rpc;
-using System;
-using System.Collections.Generic;
 using Contracts.Client;
 using Contracts.Server.Controllers;
 using Server.App.Controllers;
@@ -12,14 +9,16 @@ using Server.Domain;
 using Devdeb.Network.TCP.Rpc.Pipelines;
 using Devdeb.Network.TCP.Rpc.Controllers.Registrators;
 using Devdeb.Network.TCP.Rpc.HostedServices.Registrators;
+using Devdeb.Network.TCP.Rpc.Requestor.Registrators;
 
 namespace Server.App
 {
 	internal class Startup : IStartup
 	{
-		public Type RequestorType => typeof(ClientApi);
-		public Func<RequestorCollection> CreateRequestor => () => new ClientApi();
-
+		public void ConfigureRequestor(IRequestorRegistrator registrator)
+		{
+			registrator.UseRequestor<ClientApi>();
+		}
 		public void ConfigureControllers(IControllerRegistrator registrator)
 		{
 			registrator.AddController<IStudentContoller, StudentContoller>();

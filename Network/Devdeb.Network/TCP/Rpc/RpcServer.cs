@@ -10,6 +10,7 @@ using Devdeb.Network.TCP.Rpc.HostedServices.Registrators;
 using Devdeb.Network.TCP.Rpc.Pipelines;
 using Devdeb.Network.TCP.Rpc.Requestor;
 using Devdeb.Network.TCP.Rpc.Requestor.Context;
+using Devdeb.Network.TCP.Rpc.Requestor.Registrators;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,17 +23,31 @@ namespace Devdeb.Network.TCP.Rpc
 	public sealed class RpcServer : BaseExpectingTcpServer
 	{
 		private readonly Dictionary<TcpCommunication, RequestorCollection> _connectionRequestors;
-		private readonly Func<RequestorCollection> _createRequestors;
+		private readonly Func<RequestorCollection> _createRequestor;
 		private readonly IServiceProvider _serviceProvider;
 		private readonly HostedServiceRegistrator _hostedServiceRegistrator;
 		private readonly PipelineEntryPointDelegate _runPipeline;
 
 		public RpcServer(IPAddress iPAddress, int port, int backlog, IStartup startup) : base(iPAddress, port, backlog)
 		{
-			_connectionRequestors = new Dictionary<TcpCommunication, RequestorCollection>();
-			_createRequestors = startup.CreateRequestor;
-
 			ServiceCollection serviceCollection = new ServiceCollection();
+
+			_connectionRequestors = new Dictionary<TcpCommunication, RequestorCollection>();
+
+			RequestorRegistrator requestorRegistrator = new RequestorRegistrator();
+			startup.ConfigureRequestor(requestorRegistrator);
+			Type requestorType = requestorRegistrator.Configuration.ImplementationType;
+			_createRequestor = () => (RequestorCollection)Activator.CreateInstance(requestorType);
+			serviceCollection.AddScoped<RequestorCollection, RequestorCollection>(serviceProvider =>
+			{
+				IRequestorContext requestorContext = serviceProvider.GetRequiredService<IRequestorContext>();
+				return _connectionRequestors[requestorContext.TcpCommunication];
+			});
+			serviceCollection.AddScoped(requestorType, requestorType, serviceProvider =>
+			{
+				IRequestorContext requestorContext = serviceProvider.GetRequiredService<IRequestorContext>();
+				return _connectionRequestors[requestorContext.TcpCommunication];
+			});
 
 			ControllerRegistrator controllerRegistrator = new ControllerRegistrator();
 			startup.ConfigureControllers(controllerRegistrator);
@@ -42,18 +57,8 @@ namespace Devdeb.Network.TCP.Rpc
 				return (IControllerHandler)Activator.CreateInstance(typeof(ControllerHandler<>).MakeGenericType(controller.InterfaceType));
 			}));
 			serviceCollection.AddSingleton<ControllersRouter, ControllersRouter>(_ => controllersRouter);
-			serviceCollection.AddScoped<RequestorCollection, RequestorCollection>(serviceProvider =>
-			{
-				IRequestorContext requestorContext = serviceProvider.GetRequiredService<IRequestorContext>();
-				return _connectionRequestors[requestorContext.TcpCommunication];
-			});
 
 			serviceCollection.AddScoped<IRequestorContext, RequestorContext>();
-			serviceCollection.AddScoped(startup.RequestorType, startup.RequestorType, serviceProvider =>
-			{
-				IRequestorContext requestorContext = serviceProvider.GetRequiredService<IRequestorContext>();
-				return _connectionRequestors[requestorContext.TcpCommunication];
-			});
 
 			startup.ConfigureServices(serviceCollection);
 
@@ -92,7 +97,7 @@ namespace Devdeb.Network.TCP.Rpc
 		{
 			base.ProcessAccept(tcpCommunication);
 
-			RequestorCollection requestor = _createRequestors();
+			RequestorCollection requestor = _createRequestor();
 			requestor.InitializeRequestors(tcpCommunication);
 			lock(_connectionRequestors)
 				_connectionRequestors.Add(tcpCommunication, requestor);

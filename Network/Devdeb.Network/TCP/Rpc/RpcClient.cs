@@ -10,6 +10,7 @@ using Devdeb.Network.TCP.Rpc.HostedServices.Registrators;
 using Devdeb.Network.TCP.Rpc.Pipelines;
 using Devdeb.Network.TCP.Rpc.Requestor;
 using Devdeb.Network.TCP.Rpc.Requestor.Context;
+using Devdeb.Network.TCP.Rpc.Requestor.Registrators;
 using System;
 using System.Linq;
 using System.Net;
@@ -28,9 +29,14 @@ namespace Devdeb.Network.TCP.Rpc
 
 		public RpcClient(IPAddress iPAddress, int port, IStartup startup) : base(iPAddress, port)
 		{
-			RequestorCollection _serverApi = startup.CreateRequestor();
-
 			ServiceCollection serviceCollection = new ServiceCollection();
+
+			RequestorRegistrator requestorRegistrator = new RequestorRegistrator();
+			startup.ConfigureRequestor(requestorRegistrator);
+			Type requestorType = requestorRegistrator.Configuration.ImplementationType;
+			RequestorCollection requestor = (RequestorCollection)Activator.CreateInstance(requestorType);
+			serviceCollection.AddSingleton<RequestorCollection, RequestorCollection>(_ => requestor);
+			serviceCollection.AddScoped(requestorType, requestorType, _ => requestor);
 
 			ControllerRegistrator controllerRegistrator = new ControllerRegistrator();
 			startup.ConfigureControllers(controllerRegistrator);
@@ -40,10 +46,8 @@ namespace Devdeb.Network.TCP.Rpc
 				return (IControllerHandler)Activator.CreateInstance(typeof(ControllerHandler<>).MakeGenericType(controller.InterfaceType));
 			}));
 			serviceCollection.AddSingleton<ControllersRouter, ControllersRouter>(_ => controllersRouter);
-			serviceCollection.AddSingleton<RequestorCollection, RequestorCollection>(_ => _serverApi);
 
 			serviceCollection.AddScoped<IRequestorContext, RequestorContext>();
-			serviceCollection.AddScoped(startup.RequestorType, startup.RequestorType, _ => _serverApi);
 
 			startup.ConfigureServices(serviceCollection);
 
@@ -52,7 +56,6 @@ namespace Devdeb.Network.TCP.Rpc
 			{
 				serviceCollection.AddSingleton(serviceConfigurartion.ImplementationType);
 			});
-
 
 			PipelineBuilder pipelineBuilder = new PipelineBuilder();
 			startup.ConfigurePipeline(pipelineBuilder);
