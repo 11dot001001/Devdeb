@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using static Devdeb.Network.TCP.Rpc.HostedServices.Registrators.HostedServiceRegistrator;
 using IServiceProvider = Devdeb.DependencyInjection.IServiceProvider;
 
 namespace Devdeb.Network.TCP.Rpc
@@ -25,51 +26,53 @@ namespace Devdeb.Network.TCP.Rpc
 		private readonly Dictionary<TcpCommunication, RequestorCollection> _connectionRequestors;
 		private readonly Func<RequestorCollection> _createRequestor;
 		private readonly IServiceProvider _serviceProvider;
-		private readonly HostedServiceRegistrator _hostedServiceRegistrator;
+		private readonly List<HostedServiceConfig> _hostedServices;
 		private readonly PipelineEntryPointDelegate _runPipeline;
 
 		public RpcServer(IPAddress iPAddress, int port, int backlog, IStartup startup) : base(iPAddress, port, backlog)
 		{
+			RequestorRegistrator requestorRegistrator = new RequestorRegistrator();
+			ControllerRegistrator controllerRegistrator = new ControllerRegistrator();
+			HostedServiceRegistrator hostedServiceRegistrator = new HostedServiceRegistrator();
 			ServiceCollection serviceCollection = new ServiceCollection();
+			PipelineBuilder pipelineBuilder = new PipelineBuilder();
+
+			startup.ConfigureRequestor(requestorRegistrator);
+			startup.ConfigureControllers(controllerRegistrator);
+			startup.ConfigureHostedServices(hostedServiceRegistrator);
+			startup.ConfigureServices(serviceCollection);
+			startup.ConfigurePipeline(pipelineBuilder);
 
 			_connectionRequestors = new Dictionary<TcpCommunication, RequestorCollection>();
 
-			RequestorRegistrator requestorRegistrator = new RequestorRegistrator();
-			startup.ConfigureRequestor(requestorRegistrator);
 			Type requestorType = requestorRegistrator.Configuration.ImplementationType;
 			_createRequestor = () => (RequestorCollection)Activator.CreateInstance(requestorType);
-			serviceCollection.AddScoped<RequestorCollection, RequestorCollection>(serviceProvider =>
+			serviceCollection.AddScoped(serviceProvider =>
 			{
 				IRequestorContext requestorContext = serviceProvider.GetRequiredService<IRequestorContext>();
 				return _connectionRequestors[requestorContext.TcpCommunication];
 			});
-			serviceCollection.AddScoped(requestorType, requestorType, serviceProvider =>
+			serviceCollection.AddScoped(requestorType, serviceProvider =>
 			{
 				IRequestorContext requestorContext = serviceProvider.GetRequiredService<IRequestorContext>();
 				return _connectionRequestors[requestorContext.TcpCommunication];
 			});
 
-			ControllerRegistrator controllerRegistrator = new ControllerRegistrator();
-			startup.ConfigureControllers(controllerRegistrator);
 			ControllersRouter controllersRouter = new ControllersRouter(controllerRegistrator.Configurations.Select(controller =>
 			{
 				serviceCollection.AddScoped(controller.InterfaceType, controller.ImplementationType);
 				return (IControllerHandler)Activator.CreateInstance(typeof(ControllerHandler<>).MakeGenericType(controller.InterfaceType));
 			}));
-			serviceCollection.AddSingleton<ControllersRouter, ControllersRouter>(_ => controllersRouter);
+			serviceCollection.AddSingleton(_ => controllersRouter);
 
 			serviceCollection.AddScoped<IRequestorContext, RequestorContext>();
 
-			startup.ConfigureServices(serviceCollection);
-
-			startup.ConfigureHostedServices(_hostedServiceRegistrator = new HostedServiceRegistrator());
-			_hostedServiceRegistrator.Configurations.ForEach(serviceConfigurartion =>
+			_hostedServices = hostedServiceRegistrator.Configurations;
+			_hostedServices.ForEach(hostedServiceConfig =>
 			{
-				serviceCollection.AddSingleton(serviceConfigurartion.ImplementationType);
+				serviceCollection.AddSingleton(hostedServiceConfig.ImplementationType);
 			});
-
-			PipelineBuilder pipelineBuilder = new PipelineBuilder();
-			startup.ConfigurePipeline(pipelineBuilder);
+			
 			_runPipeline = pipelineBuilder.Build();
 
 			_serviceProvider = serviceCollection.BuildServiceProvider();
@@ -78,7 +81,7 @@ namespace Devdeb.Network.TCP.Rpc
 		public override void Start()
 		{
 			base.Start();
-			_hostedServiceRegistrator.Configurations.ForEach(serviceType =>
+			_hostedServices.ForEach(serviceType =>
 			{
 				IServiceProvider scopedServiceProvider = _serviceProvider.CreateScope();
 				IHostedService service = (IHostedService)scopedServiceProvider.GetService(serviceType.ImplementationType);
