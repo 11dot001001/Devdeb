@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using IServiceProvider = Devdeb.DependencyInjection.IServiceProvider;
 
-namespace Devdeb.Network.TCP.Rpc.Handler
+namespace Devdeb.Network.TCP.Rpc.Controllers
 {
 	public class ControllerHandler<THandler> : IControllerHandler
 	{

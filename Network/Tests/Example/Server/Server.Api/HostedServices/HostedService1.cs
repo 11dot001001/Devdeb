@@ -1,8 +1,8 @@
-﻿using Devdeb.Network.TCP.Rpc;
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using System.Threading;
 using Common.Services.Abstractions;
+using Devdeb.Network.TCP.Rpc.HostedServices;
 
 namespace Server.App.HostedServices
 {

@@ -10,6 +10,8 @@ using Server.App.HostedServices;
 using Common;
 using Server.Domain;
 using Devdeb.Network.TCP.Rpc.Pipelines;
+using Devdeb.Network.TCP.Rpc.Controllers.Registrators;
+using Devdeb.Network.TCP.Rpc.HostedServices.Registrators;
 
 namespace Server.App
 {
@@ -18,16 +20,15 @@ namespace Server.App
 		public Type RequestorType => typeof(ClientApi);
 		public Func<RequestorCollection> CreateRequestor => () => new ClientApi();
 
-		public void AddControllers(Dictionary<Type, Type> controllerSurjection)
+		public void ConfigureControllers(IControllerRegistrator registrator)
 		{
-			controllerSurjection.Add(typeof(IStudentContoller), typeof(StudentContoller));
-			controllerSurjection.Add(typeof(ITeacherController), typeof(TeacherController));
+			registrator.AddController<IStudentContoller, StudentContoller>();
+			registrator.AddController<ITeacherController, TeacherController>();
 		}
-
-		public void ConfigureHostedServices(List<Type> hostedServices)
+		public void ConfigureHostedServices(IHostedServiceRegistrator registrator)
 		{
-			hostedServices.Add(typeof(HostedService1));
-			hostedServices.Add(typeof(HostedService2));
+			registrator.AddHostedService<HostedService1>();
+			registrator.AddHostedService<HostedService2>();
 		}
 		public void ConfigureServices(IServiceCollection serviceCollection)
 		{

@@ -2,7 +2,7 @@
 using Devdeb.Network.TCP.Rpc.Communication;
 using IServiceProvider = Devdeb.DependencyInjection.IServiceProvider;
 
-namespace Devdeb.Network.TCP.Rpc.Handler
+namespace Devdeb.Network.TCP.Rpc.Controllers
 {
 	public interface IControllerHandler
 	{

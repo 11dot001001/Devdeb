@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace Devdeb.Network.TCP.Rpc
+namespace Devdeb.Network.TCP.Rpc.HostedServices
 {
 	public interface IHostedService
 	{

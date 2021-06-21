@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using IServiceProvider = Devdeb.DependencyInjection.IServiceProvider;
 
-namespace Devdeb.Network.TCP.Rpc.Handler
+namespace Devdeb.Network.TCP.Rpc.Controllers
 {
 	public class ControllersRouter
 	{

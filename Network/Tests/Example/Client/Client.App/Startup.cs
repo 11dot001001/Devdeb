@@ -2,13 +2,14 @@
 using Devdeb.Network.TCP.Rpc.Requestor;
 using Devdeb.Network.TCP.Rpc;
 using System;
-using System.Collections.Generic;
 using Contracts.Server;
 using Contracts.Client.Controllers;
 using Client.App.Controllers;
 using Client.App.HostedServices;
 using Client.Domain;
 using Devdeb.Network.TCP.Rpc.Pipelines;
+using Devdeb.Network.TCP.Rpc.Controllers.Registrators;
+using Devdeb.Network.TCP.Rpc.HostedServices.Registrators;
 
 namespace Client.App
 {
@@ -17,13 +18,13 @@ namespace Client.App
 		public Type RequestorType => typeof(ServerApi);
 		public Func<RequestorCollection> CreateRequestor => () => new ServerApi();
 
-		public void AddControllers(Dictionary<Type, Type> controllerSurjection)
+		public void ConfigureControllers(IControllerRegistrator registrator)
 		{
-			controllerSurjection.Add(typeof(IStudentController), typeof(StudentController));
+			registrator.AddController<IStudentController, StudentController>();
 		}
-		public void ConfigureHostedServices(List<Type> hostedServices)
+		public void ConfigureHostedServices(IHostedServiceRegistrator registrator)
 		{
-			hostedServices.Add(typeof(MainLoopService));
+			registrator.AddHostedService<MainLoopService>();
 		}
 		public void ConfigureServices(IServiceCollection serviceCollection) 
 		{

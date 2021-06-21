@@ -1,8 +1,9 @@
 ﻿using Devdeb.DependencyInjection;
+using Devdeb.Network.TCP.Rpc.Controllers.Registrators;
+using Devdeb.Network.TCP.Rpc.HostedServices.Registrators;
 using Devdeb.Network.TCP.Rpc.Pipelines;
 using Devdeb.Network.TCP.Rpc.Requestor;
 using System;
-using System.Collections.Generic;
 
 namespace Devdeb.Network.TCP.Rpc
 {
@@ -10,8 +11,8 @@ namespace Devdeb.Network.TCP.Rpc
 	{
 		Type RequestorType { get; }
 		Func<RequestorCollection> CreateRequestor { get; }
-		void AddControllers(Dictionary<Type, Type> controllerSurjection);
-		void ConfigureHostedServices(List<Type> hostedServices);
+		void ConfigureControllers(IControllerRegistrator registrator);
+		void ConfigureHostedServices(IHostedServiceRegistrator registrator);
 		void ConfigureServices(IServiceCollection serviceCollection);
 		void ConfigurePipeline(IPipelineBuilder pipelineBuilder);
 	}

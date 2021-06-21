@@ -1,6 +1,6 @@
 ﻿using Devdeb.DependencyInjection.Extensions;
 using Devdeb.Network.TCP.Rpc.Communication;
-using Devdeb.Network.TCP.Rpc.Handler;
+using Devdeb.Network.TCP.Rpc.Controllers;
 using Devdeb.Network.TCP.Rpc.Requestor;
 using Devdeb.Network.TCP.Rpc.Requestor.Context;
 using System;

@@ -1,5 +1,5 @@
 ﻿using Contracts.Server;
-using Devdeb.Network.TCP.Rpc;
+using Devdeb.Network.TCP.Rpc.HostedServices;
 using Models;
 using System;
 using System.Threading.Tasks;
