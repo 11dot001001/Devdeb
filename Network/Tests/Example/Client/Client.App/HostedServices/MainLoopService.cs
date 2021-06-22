@@ -17,6 +17,17 @@ namespace Client.App.HostedServices
 
 		public async Task StartAsync()
 		{
+			var id2 = await _serverApi.StudentContoller.AddStudent(
+				new StudentFm
+				{
+					Name = "Серафим Студентович 3",
+					Age = 20
+				},
+				10
+			);
+
+			//Console.ReadKey();
+
 			for (; ; )
 			{
 				new Task(() =>

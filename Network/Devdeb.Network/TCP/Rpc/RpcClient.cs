@@ -3,6 +3,7 @@ using Devdeb.DependencyInjection.Extensions;
 using Devdeb.Network.TCP.Communication;
 using Devdeb.Network.TCP.Expecting;
 using Devdeb.Network.TCP.Rpc.Communication;
+using Devdeb.Network.TCP.Rpc.Connections;
 using Devdeb.Network.TCP.Rpc.Controllers;
 using Devdeb.Network.TCP.Rpc.Controllers.Registrators;
 using Devdeb.Network.TCP.Rpc.HostedServices;
@@ -16,6 +17,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using static Devdeb.Network.TCP.Rpc.Connections.Connection;
 using static Devdeb.Network.TCP.Rpc.HostedServices.Registrators.HostedServiceRegistrator;
 using IServiceProvider = Devdeb.DependencyInjection.IServiceProvider;
 
@@ -26,8 +28,8 @@ namespace Devdeb.Network.TCP.Rpc
 		private readonly IServiceProvider _serviceProvider;
 		private readonly List<HostedServiceConfig> _hostedServices;
 		private readonly PipelineEntryPointDelegate _runPipeline;
-
-		private TcpCommunication _tcpCommunication;
+		private readonly RequestorCollection _requestors;
+		private Connection _connection;
 
 		public RpcClient(IPAddress iPAddress, int port, IStartup startup) : base(iPAddress, port)
 		{
@@ -44,9 +46,9 @@ namespace Devdeb.Network.TCP.Rpc
 			startup.ConfigurePipeline(pipelineBuilder);
 
 			Type requestorType = requestorRegistrator.Configuration.ImplementationType;
-			RequestorCollection requestor = (RequestorCollection)Activator.CreateInstance(requestorType);
-			serviceCollection.AddSingleton(_ => requestor);
-			serviceCollection.AddSingleton(requestorType, _ => requestor);
+			_requestors = (RequestorCollection)Activator.CreateInstance(requestorType);
+			serviceCollection.AddSingleton(_ => _requestors);
+			serviceCollection.AddSingleton(requestorType, _ => _requestors);
 
 			ControllersRouter controllersRouter = new ControllersRouter(controllerRegistrator.Configurations.Select(controller =>
 			{
@@ -81,36 +83,51 @@ namespace Devdeb.Network.TCP.Rpc
 
 		protected override void Connected(TcpCommunication tcpCommunication)
 		{
-			base.Connected(_tcpCommunication = tcpCommunication);
-			_serviceProvider.GetRequiredService<RequestorCollection>().InitializeRequestors(_tcpCommunication);
+			base.Connected(tcpCommunication);
+			_requestors.InitializeRequestors(tcpCommunication);
+			_connection = new Connection(tcpCommunication, _requestors);
 		}
-		protected override void Disconnected()
-		{
-			// stop all client handlers and other...
-		}
+		protected override void Disconnected() => _connection.Close();
 
 		protected override void ProcessCommunication(int receivedCount)
 		{
-			CommunicationMeta meta = _tcpCommunication.Receive(CommunicationMetaSerializer.Default);
+			CommunicationMeta meta = _connection.TcpCommunication.Receive(CommunicationMetaSerializer.Default);
 			receivedCount -= CommunicationMetaSerializer.Default.Size;
 
 			byte[] buffer = null;
 			if (receivedCount != 0)
 			{
 				buffer = new byte[receivedCount];
-				_tcpCommunication.Receive(buffer, 0, buffer.Length);
+				_connection.TcpCommunication.Receive(buffer, 0, buffer.Length);
 			}
 
-			Task.Factory.StartNew(async () =>
-			{
-				IServiceProvider scopedServiceProvider = _serviceProvider.CreateScope();
-				RequestorContext context = (RequestorContext)scopedServiceProvider.GetRequiredService<IRequestorContext>();
-				context.SetTcpCommunication(_tcpCommunication);
-				context.SetCommunicationMeta(meta);
-				context.SetData(buffer);
+			IServiceProvider scopedServiceProvider = _serviceProvider.CreateScope();
+			ProcessingContext processingContext = new ProcessingContext();
 
-				await _runPipeline(scopedServiceProvider);
+			Task<Task<bool>> processingTask = Task.Factory.StartNew(() =>
+			{
+				return StartProcessing(_connection.TcpCommunication, scopedServiceProvider, meta, buffer)
+					   .ContinueWith(x => _connection.ProcessingContexts.Remove(processingContext));
 			});
+
+			processingContext.ServiceProvider = scopedServiceProvider;
+			processingContext.ProcessingTask = processingTask;
+			_connection.ProcessingContexts.Add(processingContext);
+		}
+
+		private async Task StartProcessing(
+			TcpCommunication tcpCommunication,
+			IServiceProvider serviceProvider,
+			CommunicationMeta meta,
+			byte[] buffer
+		)
+		{
+			RequestorContext context = (RequestorContext)serviceProvider.GetRequiredService<IRequestorContext>();
+			context.SetTcpCommunication(tcpCommunication);
+			context.SetCommunicationMeta(meta);
+			context.SetData(buffer);
+
+			await _runPipeline(serviceProvider);
 		}
 	}
 }
