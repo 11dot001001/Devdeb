@@ -15,7 +15,7 @@ namespace Devdeb.Network.TCP.Rpc.Pipelines
 		{
 			pipelineBuilder.Use((IServiceProvider serviceProvider, NextMiddlewareDelegate nextMiddleware) =>
 			{
-				var requestorContext = serviceProvider.GetRequiredService<IRequestorContext>();
+				IRequestorContext requestorContext = serviceProvider.GetRequiredService<IRequestorContext>();
 				Guid requestId = Guid.NewGuid();
 				Console.WriteLine(
 					$"REQUEST LOGGER {requestId}\n" +
@@ -40,7 +40,7 @@ namespace Devdeb.Network.TCP.Rpc.Pipelines
 
 		static public void UseControllers(this IPipelineBuilder pipelineBuilder)
 		{
-			pipelineBuilder.Use((IServiceProvider serviceProvider, NextMiddlewareDelegate nextMiddleware) =>
+			pipelineBuilder.Use((serviceProvider, nextMiddleware) =>
 			{
 				IRequestorContext context = serviceProvider.GetRequiredService<IRequestorContext>();
 				RequestorCollection requestorCollection = serviceProvider.GetRequiredService<RequestorCollection>();

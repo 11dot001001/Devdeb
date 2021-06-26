@@ -11,19 +11,18 @@ namespace Devdeb.Network.TCP
 	{
 		private readonly Thread _acceptingThread;
 		private readonly Thread _connectionProcessing;
-		private readonly IPAddress _iPAddress;
-		private readonly int _port;
 		private readonly int _backlog;
 		private readonly Socket _tcpListener;
 		private readonly Queue<TcpCommunication> _tcpCommunications;
 
-		public BaseTcpServer(IPAddress iPAddress, int port, int backlog)
+		protected BaseTcpServer(IPAddress iPAddress, int port, int backlog)
 		{
-			_iPAddress = iPAddress ?? throw new ArgumentNullException(nameof(iPAddress));
-			_port = port;
+			if(iPAddress == null)
+				throw new ArgumentNullException(nameof(iPAddress));
+			
 			_backlog = backlog;
 			_tcpListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			_tcpListener.Bind(new IPEndPoint(_iPAddress, _port));
+			_tcpListener.Bind(new IPEndPoint(iPAddress, port));
 			_acceptingThread = new Thread(Accept);
 			_connectionProcessing = new Thread(ProcessCommunication);
 			_tcpCommunications = new Queue<TcpCommunication>();
@@ -93,7 +92,7 @@ namespace Devdeb.Network.TCP
 				lock (_tcpCommunications)
 					_tcpCommunications.Enqueue(tcpCommunication);
 
-				Thread.Sleep(1);
+				//Thread.Sleep(1);
 			}
 		}
 

@@ -10,7 +10,7 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 {
 	public class Requestor<TRequestor> : DispatchProxy, IRequestor
 	{
-		private struct ReceivedResponce
+		private struct ReceivedResponse
 		{
 			public byte[] Buffer;
 			public int Offset;
@@ -37,11 +37,11 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 				}
 			}
 		}
-		private class ResponceWaitingMeta
+		private class ResponseWaitingMeta
 		{
 			public int MethodId;
 			public int ContextId;
-			public TaskCompletionSource<ReceivedResponce> TaskCompletionSource;
+			public TaskCompletionSource<ReceivedResponse> TaskCompletionSource;
 		}
 
 		static public Requestor<TRequestor> Create(TcpCommunication tcpCommunication, int controllerId)
@@ -55,13 +55,13 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 
 		private TcpCommunication _tcpCommunication;
 		private RequestorMethodMeta[] _meta;
-		private HashSet<ResponceWaitingMeta> _responceWaitingMetas;
+		private HashSet<ResponseWaitingMeta> _responseWaitingMetas;
 		private int _controllerId;
 
 		private void Initialize(TcpCommunication tcpCommunication, int controllerId)
 		{
 			_tcpCommunication = tcpCommunication ?? throw new ArgumentNullException(nameof(tcpCommunication));
-			_responceWaitingMetas = new HashSet<ResponceWaitingMeta>();
+			_responseWaitingMetas = new HashSet<ResponseWaitingMeta>();
 			_controllerId = controllerId;
 
 			CommunicationMethodMeta[] methodsMeta = new CommunicationMethodsMetaBuilder<TRequestor>().AddPublicInstanceMethods().Build();
@@ -70,17 +70,17 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 
 		public void HandleResponse(CommunicationMeta meta, byte[] buffer, int offset)
 		{
-			ResponceWaitingMeta responceMeta;
-			lock (_responceWaitingMetas)
+			ResponseWaitingMeta responseMeta;
+			lock (_responseWaitingMetas)
 			{
-				responceMeta = _responceWaitingMetas.First(x =>
+				responseMeta = _responseWaitingMetas.First(x =>
 					x.MethodId == meta.MethodId &&
 					x.ContextId == meta.ContextId
 				);
-				_responceWaitingMetas.Remove(responceMeta);
+				_responseWaitingMetas.Remove(responseMeta);
 			}
 
-			responceMeta.TaskCompletionSource.SetResult(new ReceivedResponce
+			responseMeta.TaskCompletionSource.SetResult(new ReceivedResponse
 			{
 				Buffer = buffer,
 				Offset = offset
@@ -124,9 +124,9 @@ namespace Devdeb.Network.TCP.Rpc.Requestor
 				return null;
 			}
 
-			TaskCompletionSource<ReceivedResponce> taskCompletionSource = new TaskCompletionSource<ReceivedResponce>();
-			lock (_responceWaitingMetas)
-				_responceWaitingMetas.Add(new ResponceWaitingMeta
+			TaskCompletionSource<ReceivedResponse> taskCompletionSource = new TaskCompletionSource<ReceivedResponse>();
+			lock (_responseWaitingMetas)
+				_responseWaitingMetas.Add(new ResponseWaitingMeta
 				{
 					ContextId = requestCode,
 					MethodId = methodMeta.Id,

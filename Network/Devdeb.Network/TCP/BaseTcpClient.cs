@@ -7,7 +7,7 @@ using Devdeb.Network.TCP.Communication;
 
 namespace Devdeb.Network.TCP
 {
-    public abstract class BaseTcpClient : IDisposable
+    public abstract class BaseTcpClient : IDisposable 
     {
         private readonly Thread _connectionProcessing;
         private readonly IPAddress _serverIPAddress;
@@ -16,8 +16,8 @@ namespace Devdeb.Network.TCP
         private TcpCommunication _tcpCommunication;
         private bool _isStarted;
 
-        public BaseTcpClient(IPAddress serverIPAddress, int serverPort, int maxConnectionAttempts = 4)
-        {
+        protected BaseTcpClient(IPAddress serverIPAddress, int serverPort, int maxConnectionAttempts = 4)
+        { 
             _serverIPAddress = serverIPAddress ?? throw new ArgumentNullException(nameof(serverIPAddress));
             _serverPort = serverPort;
             _maxConnectionAttempts = maxConnectionAttempts;
@@ -42,7 +42,7 @@ namespace Devdeb.Network.TCP
             _tcpCommunication.Send(buffer, offset, count);
         }
         public void Send(byte[] buffer, ref int offset, int count)
-        {
+        { 
             Send(buffer, offset, count);
             offset += count;
         }
@@ -61,8 +61,8 @@ namespace Devdeb.Network.TCP
             VerifyClientState();
             _tcpCommunication.SendWithSize(serializer, instance);
         }
-
-		public virtual void Start()
+        
+        public virtual void Start() 
         {
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 

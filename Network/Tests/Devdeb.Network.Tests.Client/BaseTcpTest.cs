@@ -32,8 +32,19 @@ namespace Devdeb.Network.Tests.Client
                 : base(serverIPAddress, serverPort, maxConnectionAttempts)
             { }
 
-            protected override void ProcessCommunication(TcpCommunication tcpCommunication)
+            protected override void Connected(TcpCommunication tcpCommunication)
             {
+                throw new NotImplementedException();
+            }
+
+            protected override void ProcessCommunication()
+            {
+                throw new NotImplementedException();
+            }
+
+            protected override void Disconnected()
+            {
+                throw new NotImplementedException();
             }
         }
     }

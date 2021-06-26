@@ -28,6 +28,11 @@ namespace Devdeb.Network.Tests.Server
                 Console.WriteLine($"{tcpCommunication.Socket.RemoteEndPoint} was accepted.");
             }
 
+            protected override void Disconnected(TcpCommunication tcpCommunication)
+            {
+                throw new NotImplementedException();
+            }
+
             protected override void ProcessCommunication(TcpCommunication tcpCommunication)
             {
                 Console.WriteLine($"Processing {tcpCommunication.Socket.RemoteEndPoint}.");

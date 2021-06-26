@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Devdeb</Authors>
+    <Description>Tools for serialization</Description>
+    <PackageProjectUrl>https://github.com/11dot001001/Devdeb</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
