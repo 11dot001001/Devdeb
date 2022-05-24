@@ -1,8 +1,11 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using Devdeb.Serialization.Serializers.System.BigEndian;
+
+namespace Devdeb.Serialization.Serializers.System
 {
     public sealed class SingleSerializer : ConstantLengthSerializer<float>
     {
         static public SingleSerializer Default { get; } = new SingleSerializer();
+        static public BigEndianSingleSerializer BigEndian { get; } = BigEndianSingleSerializer.Default;
 
         public SingleSerializer() : base(sizeof(float)) { }
 

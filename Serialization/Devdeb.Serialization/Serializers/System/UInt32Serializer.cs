@@ -1,8 +1,11 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using Devdeb.Serialization.Serializers.System.BigEndian;
+
+namespace Devdeb.Serialization.Serializers.System
 {
     public sealed class UInt32Serializer : ConstantLengthSerializer<uint>
     {
         static public UInt32Serializer Default { get; } = new UInt32Serializer();
+        static public BigEndianUInt32Serializer BigEndian { get; } = BigEndianUInt32Serializer.Default;
 
         public UInt32Serializer() : base(sizeof(uint)) { }
 

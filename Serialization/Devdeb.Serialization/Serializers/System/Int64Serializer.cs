@@ -1,8 +1,11 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using Devdeb.Serialization.Serializers.System.BigEndian;
+
+namespace Devdeb.Serialization.Serializers.System
 {
     public sealed class Int64Serializer : ConstantLengthSerializer<long>
     {
         static public Int64Serializer Default { get; } = new Int64Serializer();
+        static public BigEndianInt64Serializer BigEndian { get; } = BigEndianInt64Serializer.Default;
 
         public Int64Serializer() : base(sizeof(long)) { }
 
