@@ -67,7 +67,7 @@ namespace Devdeb.Images.CanonRaw.Tests
 
         public struct TileHeader
         {
-            public short[] Signatures { get; } = new short[] { unchecked((short)0xFF01), unchecked((short)0xFF11) };
+            public static short[] Signatures { get; } = new short[] { unchecked((short)0xFF01), unchecked((short)0xFF11) };
             public TileHeader(ref ReadOnlyMemory<byte> memory)
             {
                 var signature = Int16Serializer.BigEndian.Deserialize(memory.Slice(0, 2).ToArray(), 0);
@@ -79,6 +79,7 @@ namespace Devdeb.Images.CanonRaw.Tests
                 Counter = memory.Span[8] >> 4;
 
                 memory = memory[12..];
+                PlaneHeaders = new List<PlaneHeader>();
                 for (; PlaneHeader.TryParse(ref memory, out PlaneHeader planeHeader);)
                     PlaneHeaders.Add(planeHeader);
             }
@@ -87,7 +88,7 @@ namespace Devdeb.Images.CanonRaw.Tests
             public int FF01DataSize { get; }
             public int Counter { get; }
 
-            public List<PlaneHeader> PlaneHeaders { get; } = new();
+            public List<PlaneHeader> PlaneHeaders { get; }
         }
         public struct PlaneHeader
         {
@@ -99,7 +100,7 @@ namespace Devdeb.Images.CanonRaw.Tests
                 PlaneDataSize = Int32Serializer.BigEndian.Deserialize(memory.Slice(4, 4).ToArray(), 0);
                 Counter = memory.Span[8] >> 4;
                 DoesSupportsPartialFlag = (memory.Span[8] >> 3) & 1;
-                RoundedBits = (memory.Span[8] >> 1) & 3;
+                RoundedBits = (memory.Span[8] >> 1) & 3; //0
 
                 memory = memory[12..];
                 SubbandHeader = new SubbandHeader(memory);
@@ -129,7 +130,7 @@ namespace Devdeb.Images.CanonRaw.Tests
         }
         public struct SubbandHeader
         {
-            public short[] Signatures { get; } = new short[] { unchecked((short)0xFF03), unchecked((short)0xFF13) };
+            public static short[] Signatures { get; } = new short[] { unchecked((short)0xFF03), unchecked((short)0xFF13) };
             public SubbandHeader(ReadOnlyMemory<byte> memory)
             {
                 var signature = Int16Serializer.BigEndian.Deserialize(memory.Slice(0, 2).ToArray(), 0);
@@ -138,10 +139,10 @@ namespace Devdeb.Images.CanonRaw.Tests
 
                 Size = Int16Serializer.BigEndian.Deserialize(memory.Slice(2, 2).ToArray(), 0);
                 SubbandDataSize = Int32Serializer.BigEndian.Deserialize(memory.Slice(4, 4).ToArray(), 0);
-                Counter = memory.Span[8] >> 4;
-                DoesSupportsPartialFlag = (memory.Span[8] >> 3) & 1;
-                QuantValue = (byte)((memory.Span[8] << 5) | (memory.Span[9] >> 3));
-                Unknown = (memory.Span[9] & 7 << 16) | (memory.Span[10] << 8) | (memory.Span[11]);
+                Counter = memory.Span[8] >> 4; //0
+                DoesSupportsPartialFlag = (memory.Span[8] >> 3) & 1; //0
+                QuantValue = (byte)((memory.Span[8] << 5) | (memory.Span[9] >> 3)); //4
+                Unknown = (memory.Span[9] & 7 << 16) | (memory.Span[10] << 8) | (memory.Span[11]); //2  
             }
 
             public short Size { get; }
@@ -197,13 +198,38 @@ namespace Devdeb.Images.CanonRaw.Tests
 
             var rowSize = 2 * planeWidth; // 11136
 
+
+            //img->planeBuf = 0;
+            //img->outBufs[0] = img->outBufs[1] = img->outBufs[2] = img->outBufs[3] = 0;
             // cfa layout = 0 and planes = 4 
             // R G
             // G B
+            //img->outBufs[0] = outBuf; //0 - R
+            //img->outBufs[1] = outBuf + 1; //1 - G
+            //img->outBufs[2] = outBuf + rowSize;  // 11136 - G
+            //img->outBufs[3] = img->outBufs[2] + 1;  // 11137 - B
             var width = planeWidth - hdr.TileWidth * (tileCols - 1); // 5568
             var progrDataSize = sizeof(int) * planeWidth; // 22272
             var paramLength = 2 * planeWidth + 4; // 11140
-            //var nonProgrData = progrDataSize ? paramData + paramLength : 0;
+                                                  //var nonProgrData = progrDataSize ? paramData + paramLength : 0;
+                                                  //tile->hasQPData = false;
+                                                  //tile->mdatQPDataSize = 0;
+                                                  //tile->mdatExtraSize = 0;
+
+            //band->kParam = 0;
+            //band->bandParam = 0;
+            //band->bandBuf = 0;
+            //band->bandSize = 0;
+            //band->dataSize = subbandSize - (bitData & 0x7FFFF);
+            //band->supportsPartial = bitData & 0x8000000; //0
+            //band->qParam = (bitData >> 19) & 0xFF; // 4
+            //band->qStepBase = 0;
+            //band->qStepMult = 0;
+
+            //uint32_t bandHeight = tile->height;
+            //uint32_t bandWidth = tile->width;
+            //int32_t bandWidthExCoef = 0;
+            //int32_t bandHeightExCoef = 0;
 
             for (int i = 0; i < hdr.TileHeight; ++i)
             {
@@ -212,6 +238,7 @@ namespace Devdeb.Images.CanonRaw.Tests
                 //int32_t* lineData = (int32_t*)planeComp->subBands->bandBuf;
                 //crxConvertPlaneLine(img, imageRow + i, imageCol, planeNumber, lineData, tile->width);
             }
+            crxSetupSubbandData(hdr, tileHeader);
 
             DecodePlane(plane1Memory, hdr);
 
@@ -230,14 +257,15 @@ namespace Devdeb.Images.CanonRaw.Tests
         )
         {
             var bitStream = new ReadOnlyBitStream(plane);
-
+            var tileRows = 1;
+            var tileCols = 1;
             int imageRow = 0;
-            for (int tRow = 0; tRow < hdr.TileHeight; tRow++)
+            for (int tRow = 0; tRow < tileRows; tRow++)
             {
                 int imageCol = 0;
-                for (int tCol = 0; tCol < hdr.TileWidth; tCol++)
-                { 
-                   // var tile = 
+                for (int tCol = 0; tCol < tileCols; tCol++)
+                {
+                    // var tile = 
                 }
                 //imageRow += ;
             }
@@ -262,24 +290,49 @@ namespace Devdeb.Images.CanonRaw.Tests
         };
 
         static void crxSetupSubbandData(
-            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr
+            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
+            TileHeader tileHeader
         )
         {
             long compDataSize = 0;
             long waveletDataOffset = 0;
             long compCoeffDataOffset = 0;
-            var toSubbands = 3 * hdr.ImageLevels + 1;
+            var toSubbands = 3 * hdr.ImageLevels + 1; //1
             var transformWidth = 0;
 
 
-            //for (int i = 0; i < tile->height; ++i)
+
+            // calculate sizes
+            // Устанавливает для низкочастнотного (скорее я тут неправильно написал и не для низкочастотного канала, а для красного) subband значение bandSize
+            //for (int32_t subbandNum = 0; subbandNum < toSubbands; subbandNum++)
             //{
-            //    if (crxDecodeLine(planeComp->subBands->bandParam, planeComp->subBands->bandBuf))
-            //        return -1;
-            //    int32_t* lineData = (int32_t*)planeComp->subBands->bandBuf;
-            //    crxConvertPlaneLine(img, imageRow + i, imageCol, planeNumber, lineData, tile->width);
+            //    subbands[subbandNum].bandSize = subbands[subbandNum].width * sizeof(int32_t); // 4bytes
+            //    compDataSize += subbands[subbandNum].bandSize;
             //}
+            var bandSize = hdr.TileWidth * 4; // 22272
+            compDataSize += bandSize;// 22272
         }
+        public struct CrxSubband
+        {
+            //CrxBandParam* bandParam;
+            //uint64_t mdatOffset;
+            //uint8_t* bandBuf;
+            //uint16_t width;
+            //uint16_t height;
+            //int32_t qParam;
+            //int32_t kParam;
+            //int32_t qStepBase;
+            //uint32_t qStepMult;
+            //bool supportsPartial;
+            //int32_t bandSize;
+            //uint64_t dataSize;
+            //int64_t dataOffset;
+            //short rowStartAddOn;
+            //short rowEndAddOn;
+            //short colStartAddOn;
+            //short colEndAddOn;
+            //short levelShift;
+        };
 
 
         static Bitmap Create(Memory<byte> plane1Memory, Memory<byte> green1, Memory<byte> green2, Memory<byte> blue)
@@ -474,7 +527,7 @@ namespace Devdeb.Images.CanonRaw.Tests
 
     public struct BufferPointer
     {
-        private int _bitOffset = 0;
+        private int _bitOffset;
 
         public int ByteIndex => _bitOffset / 8;
         public int BitIndex => _bitOffset % 8;
