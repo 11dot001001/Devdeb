@@ -193,10 +193,10 @@ namespace Devdeb.Images.CanonRaw.Tests.Chunks
                         Debug.Assert(memory[52..].Length == 0);
                         // github has more data bettwen (60 .. 92) - header chunk 8 bytes
                     }
-                    public int FWidth { get; }
-                    public int FHeight { get; }
-                    public int TileWidth { get; }
-                    public int TileHeight { get; }
+                    public int FWidth { get; set; }
+                    public int FHeight { get; set; }
+                    public int TileWidth { get; set; }
+                    public int TileHeight { get; set; }
                     /// <remarks>nBits</remarks>
                     public byte BitsPerSample { get; }
                     public int PlanesNumber { get; }

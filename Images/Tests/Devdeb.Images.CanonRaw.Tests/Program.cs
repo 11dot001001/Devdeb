@@ -2,11 +2,13 @@
 using Devdeb.Serialization.Serializers.System;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using static Devdeb.Images.CanonRaw.Tests.Program;
 
 namespace Devdeb.Images.CanonRaw.Tests
 {
@@ -65,7 +67,7 @@ namespace Devdeb.Images.CanonRaw.Tests
             fileStream.Write(fileMemory.Slice(checked((int)ctmd.Offset.Offset), ctmd.Size.EntrySizes[0]).Span);
         }
 
-        public struct TileHeader
+        public class TileHeader
         {
             public static short[] Signatures { get; } = new short[] { unchecked((short)0xFF01), unchecked((short)0xFF11) };
             public TileHeader(ref ReadOnlyMemory<byte> memory)
@@ -90,7 +92,7 @@ namespace Devdeb.Images.CanonRaw.Tests
 
             public List<PlaneHeader> PlaneHeaders { get; }
         }
-        public struct PlaneHeader
+        public class PlaneHeader
         {
             static public short[] Signatures { get; } = new short[] { unchecked((short)0xFF02), unchecked((short)0xFF12) };
 
@@ -99,8 +101,10 @@ namespace Devdeb.Images.CanonRaw.Tests
                 Size = Int16Serializer.BigEndian.Deserialize(memory.Slice(2, 2).ToArray(), 0);
                 PlaneDataSize = Int32Serializer.BigEndian.Deserialize(memory.Slice(4, 4).ToArray(), 0);
                 Counter = memory.Span[8] >> 4;
-                DoesSupportsPartialFlag = (memory.Span[8] >> 3) & 1;
+                DoesSupportsPartialFlag = (memory.Span[8] & 8) != 0;
                 RoundedBits = (memory.Span[8] >> 1) & 3; //0
+
+                var compHdrRoundedBits = (memory.Span[8] >> 1) & 3;
 
                 memory = memory[12..];
                 SubbandHeader = new SubbandHeader(memory);
@@ -111,7 +115,7 @@ namespace Devdeb.Images.CanonRaw.Tests
             /// <remarks>Sum of plane data equals size of parent tile.</remarks>
             public int PlaneDataSize { get; }
             public int Counter { get; }
-            public int DoesSupportsPartialFlag { get; }
+            public bool DoesSupportsPartialFlag { get; }
             public int RoundedBits { get; }
             public SubbandHeader SubbandHeader { get; }
 
@@ -128,7 +132,7 @@ namespace Devdeb.Images.CanonRaw.Tests
                 return true;
             }
         }
-        public struct SubbandHeader
+        public class SubbandHeader
         {
             public static short[] Signatures { get; } = new short[] { unchecked((short)0xFF03), unchecked((short)0xFF13) };
             public SubbandHeader(ReadOnlyMemory<byte> memory)
@@ -137,44 +141,83 @@ namespace Devdeb.Images.CanonRaw.Tests
                 if (!Signatures.Contains(signature))
                     throw new InvalidOperationException($"Invalid subband header signature {signature}.");
 
-                Size = Int16Serializer.BigEndian.Deserialize(memory.Slice(2, 2).ToArray(), 0);
+                HdrSize = Int16Serializer.BigEndian.Deserialize(memory.Slice(2, 2).ToArray(), 0);
                 SubbandDataSize = Int32Serializer.BigEndian.Deserialize(memory.Slice(4, 4).ToArray(), 0);
                 Counter = memory.Span[8] >> 4; //0
                 DoesSupportsPartialFlag = (memory.Span[8] >> 3) & 1; //0
-                QuantValue = (byte)((memory.Span[8] << 5) | (memory.Span[9] >> 3)); //4
+                QParam = (byte)((memory.Span[8] << 5) | (memory.Span[9] >> 3)); //4
                 Unknown = (memory.Span[9] & 7 << 16) | (memory.Span[10] << 8) | (memory.Span[11]); //2  
+
+                var bitData = Int32Serializer.BigEndian.Deserialize(memory.Slice(8, 4).ToArray(), 0);
+                DataSize = SubbandDataSize - (bitData & 0x7FFFF);
             }
 
-            public short Size { get; }
+            public short HdrSize { get; }
             /// <remarks>Sum of plane data equals size of parent tile.</remarks>
             public int SubbandDataSize { get; }
             public int Counter { get; }
             public int DoesSupportsPartialFlag { get; }
-            public byte QuantValue { get; }
+            /// <remarks>QuantValue</remarks>
+            public byte QParam { get; }
             public int Unknown { get; }
+
+            public CrxBandParam BandParam { get; set; } = null;
+            public long DataSize { get; set; }
+            public long DataOffset { get; set; } = 0;
+            public int KParam { get; set; } = 0;
+            public byte[] BandBuf { get; set; } = null;
+            public int BandSize { get; set; } = 0;
+            public int QStepBase { get; set; } = 0;
+            public int QStepMult { get; set; } = 0;
+
+            public long mdatOffset;
+            public short Width;
+            public short Height;
+            public short rowStartAddOn;
+            public short rowEndAddOn;
+            public short colStartAddOn;
+            public short colEndAddOn;
+            public short levelShift;
         }
+
         static void ParseCrxHdImage(TrackBox crxHdImageTrack, Memory<byte> fileMemory)
         {
             var ctmd = crxHdImageTrack.SampleTable;
 
             var memory = fileMemory.Slice(checked((int)ctmd.Offset.Offset), ctmd.Size.EntrySizes[0]);
 
+            var hdr = ctmd.Craw.Compression;
+
+            if (hdr.PlanesNumber == 4)
+            {
+                hdr.FWidth >>= 1;
+                hdr.FHeight >>= 1;
+                hdr.TileWidth >>= 1;
+                hdr.TileHeight >>= 1;
+            }
+            var imgdata_color_maximum = (1 << hdr.BitsPerSample) - 1;
 
             ReadOnlyMemory<byte> tileHeaderMemory = memory;
             var tileHeader = new TileHeader(ref tileHeaderMemory);
 
+            foreach (var plane in tileHeader.PlaneHeaders)
+            {
+                plane.SubbandHeader.Width = checked((short)hdr.TileWidth);
+                plane.SubbandHeader.Height = checked((short)hdr.TileHeight);
+            }
+
             var tileMemory = memory[ctmd.Craw.Compression.MdatTrackHeaderSize..];
 
             var planeOffset = 0;
-            var plane1Memory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[0].PlaneDataSize);
+            var redMemory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[0].PlaneDataSize);
             planeOffset += tileHeader.PlaneHeaders[0].PlaneDataSize;
-            var plane2Memory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[1].PlaneDataSize);
+            var green1Memory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[1].PlaneDataSize);
             planeOffset += tileHeader.PlaneHeaders[1].PlaneDataSize;
-            var plane3Memory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[2].PlaneDataSize);
+            var green2Memory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[2].PlaneDataSize);
             planeOffset += tileHeader.PlaneHeaders[2].PlaneDataSize;
-            var plane4Memory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[3].PlaneDataSize);
+            var blueMemory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[3].PlaneDataSize);
 
-            var totalLEngth = plane1Memory.Length + plane2Memory.Length + plane3Memory.Length + plane4Memory.Length;
+            var totalLEngth = redMemory.Length + green1Memory.Length + green2Memory.Length + blueMemory.Length;
 
             //Create(plane1Memory, plane2Memory, plane3Memory, plane4Memory)
             //    .Save(@"C:\Users\lehac\Desktop\test_raw_picture_red.jpg", ImageFormat.Jpeg);
@@ -182,7 +225,8 @@ namespace Devdeb.Images.CanonRaw.Tests
             int[] incrBitTable = new int[16] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0 };
 
             //img->planeWidth
-            var hdr = ctmd.Craw.Compression;
+
+
             var planeWidth = hdr.FWidth; //5568
             //img->planeHeight
             var planeHeight = hdr.FHeight; // 3708
@@ -211,10 +255,10 @@ namespace Devdeb.Images.CanonRaw.Tests
             var width = planeWidth - hdr.TileWidth * (tileCols - 1); // 5568
             var progrDataSize = sizeof(int) * planeWidth; // 22272
             var paramLength = 2 * planeWidth + 4; // 11140
-                                                  //var nonProgrData = progrDataSize ? paramData + paramLength : 0;
-                                                  //tile->hasQPData = false;
-                                                  //tile->mdatQPDataSize = 0;
-                                                  //tile->mdatExtraSize = 0;
+            //var nonProgrData = progrDataSize ? paramData + paramLength : 0;
+            //tile->hasQPData = false;
+            //tile->mdatQPDataSize = 0;
+            //tile->mdatExtraSize = 0;
 
             //band->kParam = 0;
             //band->bandParam = 0;
@@ -231,21 +275,14 @@ namespace Devdeb.Images.CanonRaw.Tests
             //int32_t bandWidthExCoef = 0;
             //int32_t bandHeightExCoef = 0;
 
-            for (int i = 0; i < hdr.TileHeight; ++i)
-            {
-                //if (crxDecodeLine(planeComp->subBands->bandParam, planeComp->subBands->bandBuf))
-                //    return -1;
-                //int32_t* lineData = (int32_t*)planeComp->subBands->bandBuf;
-                //crxConvertPlaneLine(img, imageRow + i, imageCol, planeNumber, lineData, tile->width);
-            }
-            crxSetupSubbandData(hdr, tileHeader);
+            //band->width = bandWidthExCoef + bandWidth; //tile->width
+            //band->height = bandHeightExCoef + bandHeight; //tile->height
+            DecodePlane(redMemory, hdr, tileHeader, 0);
 
-            DecodePlane(plane1Memory, hdr);
-
-            CreateBitmap(plane1Memory).Save(@"C:\Users\lehac\Desktop\test_raw_picture.jpg", ImageFormat.Jpeg);
-            CreateBitmap(plane2Memory).Save(@"C:\Users\lehac\Desktop\test_raw_picture2.jpg", ImageFormat.Jpeg);
-            CreateBitmap(plane3Memory).Save(@"C:\Users\lehac\Desktop\test_raw_picture3.jpg", ImageFormat.Jpeg);
-            CreateBitmap(plane4Memory).Save(@"C:\Users\lehac\Desktop\test_raw_picture4.jpg", ImageFormat.Jpeg);
+            CreateBitmap(redMemory).Save(@"C:\Users\lehac\Desktop\test_raw_picture.jpg", ImageFormat.Jpeg);
+            CreateBitmap(green1Memory).Save(@"C:\Users\lehac\Desktop\test_raw_picture2.jpg", ImageFormat.Jpeg);
+            CreateBitmap(green2Memory).Save(@"C:\Users\lehac\Desktop\test_raw_picture3.jpg", ImageFormat.Jpeg);
+            CreateBitmap(blueMemory).Save(@"C:\Users\lehac\Desktop\test_raw_picture4.jpg", ImageFormat.Jpeg);
 
             byte[] nameMemory = tileMemory.ToArray();
             var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
@@ -253,45 +290,86 @@ namespace Devdeb.Images.CanonRaw.Tests
 
         private static void DecodePlane(
             Memory<byte> plane,
-            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr
+            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
+            TileHeader tileHeader,
+            int planeNumber
         )
         {
             var bitStream = new ReadOnlyBitStream(plane);
-            var tileRows = 1;
-            var tileCols = 1;
-            int imageRow = 0;
-            for (int tRow = 0; tRow < tileRows; tRow++)
+            CrxBandParam param = crxSetupSubbandData(plane, hdr, tileHeader, planeNumber);
+
+            var subbandHeader = tileHeader.PlaneHeaders[planeNumber].SubbandHeader;
+
+            for (int i = 0; i < hdr.TileHeight; ++i)
             {
-                int imageCol = 0;
-                for (int tCol = 0; tCol < tileCols; tCol++)
-                {
-                    // var tile = 
-                }
-                //imageRow += ;
+                crxDecodeLine(param, subbandHeader.BandBuf);
+                //if (crxDecodeLine(planeComp->subBands->bandParam, planeComp->subBands->bandBuf))
+                //    return -1;
+                //int32_t* lineData = (int32_t*)planeComp->subBands->bandBuf;
+                //crxConvertPlaneLine(img, imageRow + i, imageCol, planeNumber, lineData, tile->width);
             }
         }
 
-        unsafe struct CrxBandParam
-        {
-            //public CrxBitstream BitStream { get; set; }
-            public short SubbandWidth { get; set; }
-            public short SubbandHeight { get; set; }
-            public int RoundedBitsMask { get; set; }
-            public int RoundedBits { get; set; }
-            public short CurLine { get; set; }
-            public int* LineBuf0 { get; set; }
-            public int* LineBuf1 { get; set; }
-            public int* LineBuf2 { get; set; }
-            public int SParam { get; set; }
-            public int KParam { get; set; }
-            public int* ParamData { get; set; }
-            public int* NonProgrData { get; set; }
-            public bool SupportsPartial { get; set; }
-        };
 
-        static void crxSetupSubbandData(
+        static void crxDecodeLine(CrxBandParam param, byte[] bandBuf)
+        {
+            if (param.CurLine == 0)
+            {
+                int lineLength = param.SubbandWidth + 2;
+
+                param.SParam = 0;
+                param.KParam = 0;
+                if (param.SupportsPartial)
+                {
+                    if (param.RoundedBitsMask <= 0)
+                    {
+                        param.LineBuf0 = param.ParamData;
+                        param.LineBuf1 = param.LineBuf0.Slice(0, lineLength);
+                        int* lineBuf = param.LineBuf1 + 1;
+                        if (crxDecodeTopLine(param))
+                            return -1;
+                        memcpy(bandBuf, lineBuf, param->subbandWidth * sizeof(int32_t));
+                        ++param->curLine;
+                    }
+                    else
+                    {
+                        throw new NotImplementedException();
+                        //param->roundedBits = 1;
+                        //if (param->roundedBitsMask & ~1)
+                        //{
+                        //    while (param->roundedBitsMask >> param->roundedBits)
+                        //        ++param->roundedBits;
+                        //}
+                        //param->lineBuf0 = (int32_t*)param->paramData;
+                        //param->lineBuf1 = param->lineBuf0 + lineLength;
+                        //int32_t* lineBuf = param->lineBuf1 + 1;
+                        //if (crxDecodeTopLineRounded(param))
+                        //    return -1;
+                        //memcpy(bandBuf, lineBuf, param->subbandWidth * sizeof(int32_t));
+                        //++param->curLine;
+                    }
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                    //param->lineBuf2 = (int32_t*)param->nonProgrData;
+                    //param->lineBuf0 = (int32_t*)param->paramData;
+                    //param->lineBuf1 = param->lineBuf0 + lineLength;
+                    //int32_t* lineBuf = param->lineBuf1 + 1;
+                    //if (crxDecodeTopLineNoRefPrevLine(param))
+                    //    return -1;
+                    //memcpy(bandBuf, lineBuf, param->subbandWidth * sizeof(int32_t));
+                    //++param->curLine;
+                }
+            }
+        }
+
+
+        static CrxBandParam crxSetupSubbandData(
+            Memory<byte> plane,
             TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
-            TileHeader tileHeader
+            TileHeader tileHeader,
+            int planeNumber
         )
         {
             long compDataSize = 0;
@@ -300,39 +378,176 @@ namespace Devdeb.Images.CanonRaw.Tests
             var toSubbands = 3 * hdr.ImageLevels + 1; //1
             var transformWidth = 0;
 
-
-
             // calculate sizes
-            // Устанавливает для низкочастнотного (скорее я тут неправильно написал и не для низкочастотного канала, а для красного) subband значение bandSize
             //for (int32_t subbandNum = 0; subbandNum < toSubbands; subbandNum++)
             //{
             //    subbands[subbandNum].bandSize = subbands[subbandNum].width * sizeof(int32_t); // 4bytes
             //    compDataSize += subbands[subbandNum].bandSize;
             //}
-            var bandSize = hdr.TileWidth * 4; // 22272
-            compDataSize += bandSize;// 22272
+            var bandSize = hdr.TileWidth * 4; // 11136
+            tileHeader.PlaneHeaders[planeNumber].SubbandHeader.BandSize = bandSize;
+            compDataSize += bandSize;// 11136
+
+            //planeComp->compBuf = (uint8_t *)img->memmgr.malloc(compDataSize);
+            byte[] compBuf = new byte[compDataSize];
+
+            // subbands buffer and sizes initialisation
+            //uint64_t subbandMdatOffset = img->mdatOffset + mdatOffset; // Поидеи начало subband
+            //uint8_t* subbandBuf = planeComp->compBuf; // буфер, который инициализировали выше на 1 строку * 4 байта.
+            var subbandBuf = compBuf;
+
+            //for (int32_t subbandNum = 0; subbandNum < toSubbands; subbandNum++)
+            //{
+            //    subbands[subbandNum].bandBuf = subbandBuf; //дублирование ссылки в subbands
+            //    subbandBuf += subbands[subbandNum].bandSize;
+            //    subbands[subbandNum].mdatOffset = subbandMdatOffset + subbands[subbandNum].dataOffset;
+            //}
+            //subbandBuf теперь указывает на конец буфера
+            tileHeader.PlaneHeaders[planeNumber].SubbandHeader.BandBuf = subbandBuf;
+
+            // decoding params and bitstream initialisation
+            //for (int32_t subbandNum = 0; subbandNum < toSubbands; subbandNum++)
+            //{ 
+            //    if (subbands[subbandNum].dataSize) // вроде как должны быть данные
+            //    {
+            //        bool supportsPartial = false; // true
+            //        uint32_t roundedBitsMask = 0;
+
+            //        if (planeComp->supportsPartial && subbandNum == 0) // тут будет true
+            //        {
+            //            roundedBitsMask = planeComp->roundedBitsMask; // 0 будет
+            //            supportsPartial = true;
+            //        }
+            //        if (crxParamInit(img, &subbands[subbandNum].bandParam, subbands[subbandNum].mdatOffset,
+            //                         subbands[subbandNum].dataSize, subbands[subbandNum].width, subbands[subbandNum].height,
+            //                         supportsPartial, roundedBitsMask))
+            //            return -1;
+            //    }
+            //}
+            return crxParamInit(plane, hdr, tileHeader, planeNumber);
         }
-        public struct CrxSubband
+
+        static CrxBandParam crxParamInit(
+            Memory<byte> plane,
+            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
+            TileHeader tileHeader,
+            int planeNumber,
+            bool supportsPartial = true,
+            int roundedBitsMask = 0
+        )
         {
-            //CrxBandParam* bandParam;
-            //uint64_t mdatOffset;
-            //uint8_t* bandBuf;
-            //uint16_t width;
-            //uint16_t height;
-            //int32_t qParam;
-            //int32_t kParam;
-            //int32_t qStepBase;
-            //uint32_t qStepMult;
-            //bool supportsPartial;
-            //int32_t bandSize;
-            //uint64_t dataSize;
-            //int64_t dataOffset;
-            //short rowStartAddOn;
-            //short rowEndAddOn;
-            //short colStartAddOn;
-            //short colEndAddOn;
-            //short levelShift;
+            //int32_t progrDataSize = supportsPartial ? 0 : sizeof(int32_t) * subbandWidth;
+            //int32_t paramLength = 2 * subbandWidth + 4;
+            //uint8_t* paramBuf = 0;
+            var progrDataSize = supportsPartial ? 0 : sizeof(int) * hdr.TileWidth; // 0
+            var paramLength = 2 * hdr.TileWidth + 4; //11140
+            Debug.Assert(progrDataSize == 0);
+
+
+            // paramBuf = (uint8_t *)img->memmgr.calloc(1, sizeof(CrxBandParam) + sizeof(int32_t) * paramLength + progrDataSize);
+            //*param = (CrxBandParam*)paramBuf;
+            int[] paramBuf = new int[paramLength + progrDataSize];
+
+            //paramBuf += sizeof(CrxBandParam);
+
+            //(*param)->paramData = (int32_t*)paramBuf; 
+            //(*param)->nonProgrData = progrDataSize ? (*param)->paramData + paramLength : 0;
+            //(*param)->subbandWidth = subbandWidth;
+            //(*param)->subbandHeight = subbandHeight;
+            //(*param)->roundedBits = 0;
+            //(*param)->curLine = 0;
+            //(*param)->roundedBitsMask = roundedBitsMask;
+            //(*param)->supportsPartial = supportsPartial;
+            //(*param)->bitStream.bitData = 0;
+            //(*param)->bitStream.bitsLeft = 0;
+            //(*param)->bitStream.mdatSize = subbandDataSize; // видимо размер subband
+            //(*param)->bitStream.curPos = 0;
+            //(*param)->bitStream.curBufSize = 0;
+            //(*param)->bitStream.curBufOffset = subbandMdatOffset; // видимо текущий адрес начала subband
+            //(*param)->bitStream.input = img->input;
+
+            //crxFillBuffer(&(*param)->bitStream);
+
+            CrxBandParam param = new();
+            param.ParamData = paramBuf;
+            param.NonProgrData = null;
+            param.SubbandWidth = checked((short)hdr.TileWidth);
+            param.SubbandHeight = checked((short)hdr.TileHeight);
+            param.RoundedBits = 0;
+            param.CurLine = 0;
+            param.RoundedBitsMask = roundedBitsMask;
+            param.SupportsPartial = supportsPartial;
+            param.BitStream.BitData = 0;
+            param.BitStream.BitsLeft = 0;
+            param.BitStream.MdatSize = tileHeader.PlaneHeaders[planeNumber].SubbandHeader.SubbandDataSize; // видимо размер subband
+            param.BitStream.CurPos = 0;
+            param.BitStream.CurBufSize = 0;
+            param.BitStream.CurBufOffset = 0; // видимо текущий адрес начала subband
+            //param.BitStream.Input = img->input;
+            param.BitStream.Input = plane;
+
+            param.BitStream.FillBuffer();
+
+            return param;
+        }
+
+
+        public class CrxBitstream
+        {
+            public const int CRX_BUF_SIZE = 0x10000;
+
+            /// <summary>
+            /// Temporary buffer for reading subband data.
+            /// </summary>
+            public byte[] MdatBuf = new byte[CRX_BUF_SIZE];
+            /// <summary>
+            /// Subband size.
+            /// </summary>
+            public int MdatSize;
+            /// <summary>
+            /// Current subband offset.
+            /// </summary>
+            public int CurBufOffset;
+            public uint CurPos;
+            /// <summary>
+            /// Count available bytes in <see cref="MdatBuf"/>.
+            /// </summary>
+            public uint CurBufSize;
+            public uint BitData;
+            public int BitsLeft;
+            //LibRaw_abstract_datastream* input;
+            public Memory<byte> Input;
+
+            public void FillBuffer()
+            {
+                if (CurPos >= CurBufSize && MdatSize != 0)
+                {
+                    var size = Math.Min(CRX_BUF_SIZE, MdatSize);
+                    MdatBuf = Input.Slice(CurBufOffset, size).ToArray();
+                    MdatSize -= size;
+                }
+            }
         };
+
+        public unsafe class CrxBandParam
+        {
+            public CrxBitstream BitStream { get; set; } = new();
+            public short SubbandWidth { get; set; }
+            public short SubbandHeight { get; set; }
+            public int RoundedBitsMask { get; set; }
+            public int RoundedBits { get; set; }
+            public short CurLine { get; set; }
+            public Memory<int> LineBuf0 { get; set; }
+            public Memory<int> LineBuf1 { get; set; }
+            public Memory<int> LineBuf2 { get; set; }
+            public int SParam { get; set; }
+            public int KParam { get; set; }
+            public int[] ParamData { get; set; }
+            public int[] NonProgrData { get; set; } = null;
+            public bool SupportsPartial { get; set; }
+        };
+
+
 
 
         static Bitmap Create(Memory<byte> plane1Memory, Memory<byte> green1, Memory<byte> green2, Memory<byte> blue)
