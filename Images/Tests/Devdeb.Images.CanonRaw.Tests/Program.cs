@@ -209,13 +209,13 @@ namespace Devdeb.Images.CanonRaw.Tests
             var tileMemory = memory[ctmd.Craw.Compression.MdatTrackHeaderSize..];
 
             var planeOffset = 0;
-            var redMemory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[0].PlaneDataSize);
+            var redMemory = tileMemory.Slice(planeOffset, (int)tileHeader.PlaneHeaders[0].SubbandHeader.DataSize);
             planeOffset += tileHeader.PlaneHeaders[0].PlaneDataSize;
-            var green1Memory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[1].PlaneDataSize);
+            var green1Memory = tileMemory.Slice(planeOffset, (int)tileHeader.PlaneHeaders[1].SubbandHeader.DataSize);
             planeOffset += tileHeader.PlaneHeaders[1].PlaneDataSize;
-            var green2Memory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[2].PlaneDataSize);
+            var green2Memory = tileMemory.Slice(planeOffset, (int)tileHeader.PlaneHeaders[2].SubbandHeader.DataSize);
             planeOffset += tileHeader.PlaneHeaders[2].PlaneDataSize;
-            var blueMemory = tileMemory.Slice(planeOffset, tileHeader.PlaneHeaders[3].PlaneDataSize);
+            var blueMemory = tileMemory.Slice(planeOffset, (int)tileHeader.PlaneHeaders[3].SubbandHeader.DataSize);
 
             var totalLEngth = redMemory.Length + green1Memory.Length + green2Memory.Length + blueMemory.Length;
 
@@ -252,7 +252,7 @@ namespace Devdeb.Images.CanonRaw.Tests
             //img->outBufs[1] = outBuf + 1; //1 - G
             //img->outBufs[2] = outBuf + rowSize;  // 11136 - G
             //img->outBufs[3] = img->outBufs[2] + 1;  // 11137 - B
-            var width = planeWidth - hdr.TileWidth * (tileCols - 1); // 5568
+            //var width = planeWidth - hdr.TileWidth * (tileCols - 1); // 5568
             var progrDataSize = sizeof(int) * planeWidth; // 22272
             var paramLength = 2 * planeWidth + 4; // 11140
             //var nonProgrData = progrDataSize ? paramData + paramLength : 0;
@@ -265,7 +265,8 @@ namespace Devdeb.Images.CanonRaw.Tests
             //band->bandBuf = 0;
             //band->bandSize = 0;
             //band->dataSize = subbandSize - (bitData & 0x7FFFF);
-            //band->supportsPartial = bitData & 0x8000000; //0
+            //band->suppor
+            //tsPartial = bitData & 0x8000000; //0
             //band->qParam = (bitData >> 19) & 0xFF; // 4
             //band->qStepBase = 0;
             //band->qStepMult = 0;
@@ -277,7 +278,52 @@ namespace Devdeb.Images.CanonRaw.Tests
 
             //band->width = bandWidthExCoef + bandWidth; //tile->width
             //band->height = bandHeightExCoef + bandHeight; //tile->height
-            DecodePlane(redMemory, hdr, tileHeader, 0);
+            var red = DecodePlane(redMemory, hdr, tileHeader, 0);
+            var green1 = DecodePlane(green1Memory, hdr, tileHeader, 1);
+            var green2 = DecodePlane(green2Memory, hdr, tileHeader, 2);
+            var blue = DecodePlane(blueMemory, hdr, tileHeader, 3);
+
+
+            var subbandWidth = red[0].Length;
+            var subbandHeight = red.Count;
+
+
+            Bitmap bitmap = new(subbandWidth, subbandHeight);
+
+            var max_val = (1 << 14) - 1;
+
+            for (int height = 0; height != subbandHeight; height++)
+                for (int width = 0; width != subbandWidth; width++)
+                {
+                    var redValue = ((double)red[height][width] / max_val) * 255;
+                    var green1Value = ((double)green1[height][width] / max_val) * 255 / 2;
+                    var green2Value = ((double)green2[height][width] / max_val) * 255;
+                    var blueValue = ((double)blue[height][width] / max_val) * 255;
+
+                    bitmap.SetPixel(width, height, Color.FromArgb((int)redValue, (int)green1Value, (int)blueValue));
+                }
+            bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
+
+
+
+            //Bitmap bitmap = new(subbandWidth * 2, subbandHeight * 2);
+
+            //var max_val = (1 << 14) - 1;
+
+            //for (int height = 0; height != subbandHeight - 1; height++)
+            //    for (int width = 0; width != subbandWidth - 1; width++)
+            //    {
+            //        var redValue = ((double)red[height][width] / max_val) * 255;
+            //        var green1Value = ((double)green1[height][width] / max_val) * 255;
+            //        var green2Value = ((double)green2[height][width] / max_val) * 255;
+            //        var blueValue = ((double)blue[height][width] / max_val) * 255;
+
+            //        bitmap.SetPixel(width * 2, height * 2, Color.FromArgb((int)redValue, 0, 0));
+            //        bitmap.SetPixel(width * 2 + 1, height * 2, Color.FromArgb(0, (int)green1Value, 0));
+            //        bitmap.SetPixel(width * 2, height * 2 + 1, Color.FromArgb(0, (int)green2Value, 0));
+            //        bitmap.SetPixel(width * 2 + 1, height * 2 + 1, Color.FromArgb(0, 0, (int)blueValue));
+            //    }
+            //bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
 
             CreateBitmap(redMemory).Save(@"C:\Users\lehac\Desktop\test_raw_picture.jpg", ImageFormat.Jpeg);
             CreateBitmap(green1Memory).Save(@"C:\Users\lehac\Desktop\test_raw_picture2.jpg", ImageFormat.Jpeg);
@@ -288,28 +334,660 @@ namespace Devdeb.Images.CanonRaw.Tests
             var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
         }
 
-        private static void DecodePlane(
-            Memory<byte> plane,
+        /// Decode top line without a previous K buffer
+        private static void decode_top_line_no_ref_prev_line(
+            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
+            DecoderCoefficients coefficients,
+            RiceDecoder riceDecoder,
+            ref uint sParam
+        )
+        {
+            Debug.Assert(coefficients.LinePosition == 1);
+            var remaining = (uint)hdr.TileWidth;
+            for (; remaining > 1;)
+            {
+                if (coefficients.A != 0)
+                {
+                    var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                    coefficients.X = ErrorCodeSigned(bitCode);
+                }
+                else
+                {
+                    if (riceDecoder.BitStream.Read(1, out uint value) && value == 1)
+                    {
+                        var nSyms = RunLengthDecoder.SymbolRunCount(ref sParam, riceDecoder, remaining);
+                        remaining = Extensions.SaturatingSub(remaining, nSyms);
+                        // copy symbol n_syms times
+                        for (uint counter = 0; counter != nSyms; counter++)
+                        {
+                            // For the first line, run-length coding uses only the symbol
+                            // value 0, so we can fill the line buffer and K buffer with 0.
+                            coefficients.X = 0;
+                            coefficients.KBuffer[coefficients.LinePosition - 1] = 0;
+                            coefficients.MoveLinePosition();
+                        }
+
+                        if (remaining == 0)
+                            break;
+                    }
+                    var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                    coefficients.X = ErrorCodeSigned(bitCode + 1);
+                }
+                coefficients.KBuffer[coefficients.LinePosition - 1] = riceDecoder.K;
+                coefficients.MoveLinePosition();
+                remaining = Extensions.SaturatingSub(remaining, 1);
+            }
+            if (remaining == 1)
+            {
+                var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                coefficients.X = ErrorCodeSigned(bitCode);
+                coefficients.KBuffer[coefficients.LinePosition - 1] = riceDecoder.K;
+                coefficients.MoveLinePosition();
+            }
+            Debug.Assert(coefficients.RightEndPosition);
+            coefficients.X = 0;
+        }
+
+        /// Decode nontop line with a previous K buffer
+        private static void decode_nontop_line_no_ref_prev_line(
+            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
+            DecoderCoefficients coefficients,
+            RiceDecoder riceDecoder,
+            ref uint sParam
+        )
+        {
+            Debug.Assert(coefficients.LinePosition == 1);
+            var remaining = (uint)hdr.TileWidth;
+            for (; remaining > 1;)
+            {
+                if ((coefficients.D | coefficients.B | coefficients.A) != 0)
+                {
+                    var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, 0);
+                    coefficients.X = ErrorCodeSigned(bitCode);
+                    if (Extensions.SaturatingSub((uint)coefficients.KBuffer[coefficients.LinePosition], (uint)riceDecoder.K) <= 1)
+                    {
+                        if (riceDecoder.K >= 15)
+                            riceDecoder.K = 15;
+                    }
+                    else
+                        riceDecoder.K++;
+                }
+                else
+                {
+                    if (riceDecoder.BitStream.Read(1, out uint value) && value == 1)
+                    {
+                        Debug.Assert(remaining != 1);
+                        var nSyms = RunLengthDecoder.SymbolRunCount(ref sParam, riceDecoder, remaining);
+                        remaining = Extensions.SaturatingSub(remaining, nSyms);
+                        // copy symbol n_syms times
+                        for (uint counter = 0; counter != nSyms; counter++)
+                        {
+                            // For the first line, run-length coding uses only the symbol
+                            // value 0, so we can fill the line buffer and K buffer with 0.
+                            coefficients.X = 0;
+                            coefficients.KBuffer[coefficients.LinePosition - 1] = 0;
+                            coefficients.MoveLinePosition();
+                        }
+                    }
+
+                    if (remaining <= 1)
+                    {
+                        if (remaining == 1)
+                        {
+                            var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                            coefficients.X = ErrorCodeSigned(bitCode + 1);
+                            coefficients.KBuffer[coefficients.LinePosition - 1] = riceDecoder.K;
+                            coefficients.MoveLinePosition();
+                            remaining = Extensions.SaturatingSub(remaining, 1);// skip remaining check at end of function
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, 0);
+                        coefficients.X = ErrorCodeSigned(bitCode + 1);// Caution: + 1
+                        if (Extensions.SaturatingSub((uint)coefficients.KBuffer[coefficients.LinePosition], (uint)riceDecoder.K) <= 1)
+                        {
+                            if (riceDecoder.K >= 15)
+                                riceDecoder.K = 15;
+                        }
+                        else
+                            riceDecoder.K++;
+                    }
+                }
+                coefficients.KBuffer[coefficients.LinePosition - 1] = riceDecoder.K;
+                coefficients.MoveLinePosition();
+                remaining = Extensions.SaturatingSub(remaining, 1);
+            }
+            if (remaining == 1)
+            {
+                var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                coefficients.X = ErrorCodeSigned(bitCode);
+                coefficients.KBuffer[coefficients.LinePosition - 1] = riceDecoder.K;
+                coefficients.MoveLinePosition();
+            }
+            Debug.Assert(coefficients.RightEndPosition);
+        }
+
+        /// Decode top line
+        /// For the first line (top) in a plane, no MED is used because
+        /// there is no previous line for coeffs b, c and d.
+        /// So this decoding is a simplified version from decode_nontop_line().
+        private static void decode_top_line(
+            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
+            DecoderCoefficients coefficients,
+            RiceDecoder riceDecoder,
+            ref uint sParam
+        )
+        {
+            Debug.Assert(coefficients.LinePosition == 1);
+            var remaining = (uint)hdr.TileWidth;
+            coefficients.A = 0;
+            for (; remaining > 1;)
+            {
+                if (coefficients.A != 0)
+                    coefficients.X = coefficients.A;
+                else
+                {
+                    if (riceDecoder.BitStream.Read(1, out uint value) && value == 1)
+                    {
+                        var nSyms = RunLengthDecoder.SymbolRunCount(ref sParam, riceDecoder, remaining);
+                        remaining = Extensions.SaturatingSub(remaining, nSyms);
+                        // copy symbol n_syms times
+                        for (uint counter = 0; counter != nSyms; counter++)
+                        {
+                            coefficients.X = coefficients.A;
+                            coefficients.MoveLinePosition();
+                        }
+                        if (remaining == 0)
+                            break;
+                    }
+                    coefficients.X = 0;
+                }
+
+                var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                coefficients.X += ErrorCodeSigned(bitCode);
+                coefficients.MoveLinePosition();
+                remaining = Extensions.SaturatingSub(remaining, 1);
+            }
+
+            if (remaining == 1)
+            {
+                var x = coefficients.A; // no MED, just use coeff a
+                var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                coefficients.X = x + ErrorCodeSigned(bitCode);
+                coefficients.MoveLinePosition();
+            }
+            Debug.Assert(coefficients.RightEndPosition);
+            coefficients.X = coefficients.A + 1;
+        }
+
+        /// Decode a line which is not a top line
+        /// This used run length coding, Median Edge Detection (MED) and
+        /// adaptive Golomb-Rice entropy encoding.
+        /// Golomb-Rice becomes more efficient when using an adaptive K value
+        /// instead of a fixed one.
+        /// The K parameter is used as q = n >> k where n is the sample to encode.
+        private static void decode_nontop_line(
+            TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
+            DecoderCoefficients coefficients,
+            RiceDecoder riceDecoder,
+            ref uint sParam
+        )
+        {
+            Debug.Assert(coefficients.LinePosition == 1);
+            var remaining = (uint)hdr.TileWidth;
+            coefficients.A = coefficients.B;
+
+            for (; remaining > 1;)
+            {
+                int x = 0;
+                //  c b d
+                //  a x n
+                // Median Edge Detection to predict pixel x. Described in patent US2016/0323602 and T.87
+                if (coefficients.A == coefficients.B && coefficients.A == coefficients.D)
+                {
+                    // different than step [0104], where Condition: "a=c and c=b and b=d", c not used
+                    if (riceDecoder.BitStream.Read(1, out uint value) && value == 1)
+                    {
+                        var nSyms = RunLengthDecoder.SymbolRunCount(ref sParam, riceDecoder, remaining);
+                        remaining = Extensions.SaturatingSub(remaining, nSyms);
+                        // copy symbol n_syms times
+                        for (uint counter = 0; counter != nSyms; counter++)
+                        {
+                            coefficients.X = coefficients.A;
+                            coefficients.MoveLinePosition();
+                        }
+                    }
+                    if (remaining > 0)
+                    {
+                        x = coefficients.B; // use new coeff b because we moved line_pos!
+                    }
+                }
+                else
+                {
+                    // no run length coding, use MED instead
+                    x = MedianEdgeDetection(coefficients.A, coefficients.B, coefficients.C);
+                }
+
+                if (remaining > 0)
+                {
+                    var bitCode = riceDecoder.AdaptiveRiceDecode(false, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                    // add converted (+/-) error code to predicted value
+                    coefficients.X = x + ErrorCodeSigned(bitCode);
+                    // for not end of the line - use one symbol ahead to estimate next K
+                    if (remaining > 1)
+                    {
+                        var delta = (coefficients.D - coefficients.B) << 1;
+                        bitCode = (bitCode + (uint)Math.Abs(delta)) >> 1;
+                    }
+                    riceDecoder.UpdateK(bitCode, PREDICT_K_MAX);
+                    coefficients.MoveLinePosition();
+                }
+                remaining = Extensions.SaturatingSub(remaining, 1);
+            }
+
+            if (remaining == 1)
+            {
+                int x = MedianEdgeDetection(coefficients.A, coefficients.B, coefficients.C);
+                var bitCode = riceDecoder.AdaptiveRiceDecode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX);
+                // add converted (+/-) error code to predicted value
+                coefficients.X = x + ErrorCodeSigned(bitCode);
+                coefficients.MoveLinePosition();
+            }
+            Debug.Assert(coefficients.RightEndPosition);
+            coefficients.X = coefficients.A + 1;
+        }
+
+        const int PREDICT_K_MAX = 15;
+        const int PREDICT_K_ESCAPE = 41;
+        const int PREDICT_K_ESCBITS = 21;
+
+        private static List<ushort[]> DecodePlane(
+            Memory<byte> planeMemory,
             TrackBox.SampleTableBox.CrawChunk.CompressionTag hdr,
             TileHeader tileHeader,
             int planeNumber
         )
         {
-            var bitStream = new ReadOnlyBitStream(plane);
-            CrxBandParam param = crxSetupSubbandData(plane, hdr, tileHeader, planeNumber);
+            //var bitStream = new ReadOnlyBitStream(plane);
+            //CrxBandParam param = crxSetupSubbandData(plane, hdr, tileHeader, planeNumber);
 
-            var subbandHeader = tileHeader.PlaneHeaders[planeNumber].SubbandHeader;
+            var plane = tileHeader.PlaneHeaders[planeNumber];
 
-            for (int i = 0; i < hdr.TileHeight; ++i)
+            /// |E|Samples........................|E|
+            /// |c|bd                           cb|d|
+            /// |a|xn                           ax|n|
+            ///  ^ ^                               ^
+            ///  | |                               |-- Extra sample to provide fake d coefficent
+            ///  | |---- First sample value
+            ///  |------ Extra sample to provide a fake a/c coefficent
+
+            uint sParam = 0;
+            var subbandWidth = tileHeader.PlaneHeaders[0].SubbandHeader.Width;
+            var subbandHeight = tileHeader.PlaneHeaders[0].SubbandHeader.Height;
+            var coefficients = new DecoderCoefficients(1 + hdr.TileWidth + 1);
+            var riceDecoder = new RiceDecoder(new ReadOnlyBitStream(planeMemory));
+            bool supportsPartial = true;
+            int rounded_bits_mask = 0;
+            int rounded_bits = 0;
+
+
+            for (int currentLine = 0; currentLine < hdr.TileHeight; currentLine++)
             {
-                crxDecodeLine(param, subbandHeader.BandBuf);
-                //if (crxDecodeLine(planeComp->subBands->bandParam, planeComp->subBands->bandBuf))
-                //    return -1;
-                //int32_t* lineData = (int32_t*)planeComp->subBands->bandBuf;
-                //crxConvertPlaneLine(img, imageRow + i, imageCol, planeNumber, lineData, tile->width);
+                try
+                {
+                    if (currentLine == 0)
+                    {
+                        sParam = 0;
+                        riceDecoder.K = 0;
+
+                        if (supportsPartial)
+                        {
+                            if (rounded_bits_mask <= 0)
+                                decode_top_line(hdr, coefficients, riceDecoder, ref sParam);
+                            else
+                            {
+                                rounded_bits = 1;
+                                //if ((rounded_bits_mask & !1) != 0)  
+                                //{
+                                //    while (rounded_bits_mask >> rounded_bits != 0) 
+                                //    {
+                                //        rounded_bits += 1;
+                                //    }
+                                //}
+                                //self.decode_top_line_rounded(param) ?;
+                            }
+                        }
+                        else
+                            decode_top_line_no_ref_prev_line(hdr, coefficients, riceDecoder, ref sParam);
+                    }
+                    else if (!supportsPartial)
+                    {
+                        coefficients.SwapBuffers();
+                        decode_nontop_line_no_ref_prev_line(hdr, coefficients, riceDecoder, ref sParam);
+                    }
+                    else if (rounded_bits_mask <= 0)
+                    {
+                        coefficients.SwapBuffers();
+                        decode_nontop_line(hdr, coefficients, riceDecoder, ref sParam);
+                    }
+                    else
+                    {
+                        coefficients.SwapBuffers();
+                        //self.decode_nontop_line_rounded(param) ?;
+                    }
+                }
+                catch (Exception e)
+                {
+                    coefficients.Print(hdr.TileWidth, hdr.TileHeight);
+                }
+            }
+
+
+            var median = 1 << (hdr.BitsPerSample - 1);
+            var max_val = (1 << hdr.BitsPerSample) - 1;
+
+            var newCoefficients = new List<ushort[]>();
+            foreach (int[] planeLine in coefficients.SwappedBuffers)
+            {
+                ushort[] convertedLine = new ushort[planeLine.Length];
+
+                for (int i = 0; i < planeLine.Length; i++)
+                {
+                    convertedLine[i] = constrain(median + planeLine[i], 0, max_val);
+                }
+                newCoefficients.Add(convertedLine);
+            }
+
+            //Bitmap bitmap = new(plane.SubbandHeader.Width, plane.SubbandHeader.Height);
+            //for (int height = 0; height != bitmap.Height - 1; height++)
+            //    for (int width = 0; width != bitmap.Width - 1; width++)
+            //    {
+            //        var redValue = ((double)newCoefficients[height][width] / max_val) * 255;
+            //        bitmap.SetPixel(width, height, Color.FromArgb((int)redValue, 0, 0));
+            //    }
+            //bitmap.Save($@"C:\Users\lehac\Desktop\channel{planeNumber}.png", ImageFormat.Png);
+            return newCoefficients;
+        }
+
+        private static ushort constrain(int Value, int minValue, int maxValue)
+        {
+            return (ushort)Math.Min(Math.Max(Value, minValue), maxValue);
+        }
+
+        /// The error code contains a sign bit at bit 0.
+        /// Example: 10010 1 -> negative value, 10010 0 -> positive value
+        /// This routine converts an unsigned bit_code to the correct
+        /// signed integer value.
+        /// For this, the sign bit is inverted and XOR with
+        /// the shifted integer value.
+        /// 15361 = -7681
+        /// 15360 = 7680
+        private static int ErrorCodeSigned(uint bitCode) => (int)(0 - (bitCode & 1) ^ (bitCode >> 1));
+
+        /// <summary>
+        /// Median Edge Detection
+        /// [0053] Obtains a predictive value p of the coefficient by using
+        /// MED prediction, thereby performing predictive coding.
+        /// </summary>
+        /// <returns>P coefficient</returns>
+        static int MedianEdgeDetection(int coefficientA, int coefficientB, int coefficientC)
+        {
+            var minAB = Math.Min(coefficientA, coefficientB);
+            var maxAB = Math.Max(coefficientA, coefficientB);
+
+            if (coefficientC <= minAB)
+                return maxAB;
+            else if (coefficientC >= maxAB)
+                return minAB;
+            else
+                return coefficientA + coefficientB - coefficientC;
+        }
+
+        public static class RunLengthDecoder
+        {
+            /// See ITU T.78 Section A.2.1 Step 3
+            /// Initialise the variables for the run mode: RUNindex=0 and J[0..31]
+            public static readonly int[] J = new int[32]
+            {
+                0, 0,  0,  0,  1,  1,  1,  1,
+                2, 2,  2,  2,  3,  3,  3,  3,
+                4, 4,  5,  5,  6,  6,  7,  7,
+                8, 9, 10, 11, 12, 13, 14, 15
+            };
+
+            /// Precalculated values for (1 << J[0..31])
+            public static readonly uint[] JSHIFT = new uint[32]
+            {
+                1u << J[0],  1u << J[1],  1u << J[2],  1u << J[3],
+                1u << J[4],  1u << J[5],  1u << J[6],  1u << J[7],
+                1u << J[8],  1u << J[9],  1u << J[10], 1u << J[11],
+                1u << J[12], 1u << J[13], 1u << J[14], 1u << J[15],
+                1u << J[16], 1u << J[17], 1u << J[18], 1u << J[19],
+                1u << J[20], 1u << J[21], 1u << J[22], 1u << J[23],
+                1u << J[24], 1u << J[25], 1u << J[26], 1u << J[27],
+                1u << J[28], 1u << J[29], 1u << J[30], 1u << J[31]
+            };
+
+            /// Get symbol run count for run-length decoding
+            /// See T.87 Section A.7.1.2 Run-length coding
+            public static uint SymbolRunCount(ref uint sParam, RiceDecoder decoder, uint remaining)
+            {
+                uint run_cnt = 1;
+                // See T.87 A.7.1.2 Code segment A.15
+                // Bitstream 111110... means 5 lookups into J to decode final RUNcnt
+                while (run_cnt != remaining && decoder.BitStream.Read(1, out var value) && value == 1)
+                {
+                    // JS is precalculated (1 << J[RUNindex])
+                    run_cnt += JSHIFT[sParam];
+                    if (run_cnt > remaining)
+                    {
+                        run_cnt = remaining;
+                        break;
+                    }
+                    sParam = Math.Min(sParam + 1, 31);
+                }
+                // See T.87 A.7.1.2 Code segment A.16
+                if (run_cnt < remaining)
+                {
+                    if (J[sParam] > 0)
+                    {
+                        Debug.Assert(decoder.BitStream.Read(J[sParam], out uint value));
+                        run_cnt += value;
+                    }
+                    sParam = Extensions.SaturatingSub(sParam, 1); // prevent underflow
+
+                    if (run_cnt > remaining)
+                        throw new Exception("Crx decoder error while decoding line");
+                }
+                return run_cnt;
             }
         }
 
+        public static class Extensions
+        {
+            public static uint SaturatingSub(uint a, uint b) => b > a ? 0 : a - b;
+        }
+
+        public class DecoderCoefficients
+        {
+            private int[] _previousLine;
+            private int[] _currentLine;
+            private int[] _kBuffer;
+
+            private int _linePosition;
+            private readonly int _size;
+
+            public DecoderCoefficients(int size)
+            {
+                _previousLine = new int[size];
+                _currentLine = new int[size];
+                _kBuffer = new int[size];
+                _size = size;
+                _linePosition = 1;
+            }
+
+            public void SwapBuffers()
+            {
+                SwappedBuffers.Add(_currentLine.Skip(1).SkipLast(1).ToArray());
+                var memory = _previousLine;
+                _previousLine = _currentLine;
+                _currentLine = memory;
+                Array.Clear(_currentLine, 0, _currentLine.Length);
+                _linePosition = 1;
+            }
+
+            public void MoveLinePosition() => _linePosition++;
+
+            public int LinePosition => _linePosition;
+            public bool RightEndPosition => _linePosition == _size - 1;
+
+            public int[] KBuffer => _kBuffer;
+            public List<int[]> SwappedBuffers { get; } = new();
+
+            public void Print(int pictureWidth, int pictureHeight)
+            {
+                Bitmap bitmap = new(pictureWidth, pictureHeight);
+                for (int width = 0; width != bitmap.Width; width++)
+                    for (int height = 0; height != bitmap.Height; height++)
+                        bitmap.SetPixel(width, height, Color.White);
+
+                var decodedPixelsCount = SwappedBuffers.Count * (_size - 2);
+
+                for (int width = 0; width != bitmap.Width; width++)
+                    for (int height = 0; height != bitmap.Height; height++)
+                    {
+                        var index = width * height;
+                        if (index >= decodedPixelsCount)
+                        {
+                            bitmap.Save(@"C:\Users\lehac\Desktop\decoded_file.png", ImageFormat.Png);
+                            return;
+                        }
+                        bitmap.SetPixel(width, height, Color.FromArgb(SwappedBuffers[index / (_size - 2)][index % (_size - 2)], 0, 0));
+                    }
+
+                throw new Exception();
+            }
+
+            public int C
+            {
+                get => _previousLine[_linePosition - 1];
+                set => _previousLine[_linePosition - 1] = value;
+            }
+            public int B
+            {
+                get => _previousLine[_linePosition];
+                set => _previousLine[_linePosition] = value;
+            }
+            public int D
+            {
+                get => _previousLine[_linePosition + 1];
+                set => _previousLine[_linePosition + 1] = value;
+            }
+            public int A
+            {
+                get => _currentLine[_linePosition - 1];
+                set => _currentLine[_linePosition - 1] = value;
+            }
+            public int X
+            {
+                get => _currentLine[_linePosition];
+                set => _currentLine[_linePosition] = value;
+            }
+            public int N
+            {
+                get => _currentLine[_linePosition + 1];
+                set => _currentLine[_linePosition + 1] = value;
+            }
+        }
+
+        public class RiceDecoder
+        {
+            private readonly ReadOnlyBitStream _bitStream;
+
+            public RiceDecoder(ReadOnlyBitStream readOnlyBitStream)
+            {
+                _bitStream = readOnlyBitStream ?? throw new ArgumentNullException(nameof(readOnlyBitStream));
+            }
+
+            public int K { get; set; }
+            public ReadOnlyBitStream BitStream => _bitStream;
+
+            /// Golomb-Rice decoding
+            /// https://w3.ual.es/~vruiz/Docencia/Apuntes/Coding/Text/03-symbol_encoding/09-Golomb_coding/index.html
+            /// escape and esc_bits are used to interrupt decoding when
+            /// a value is not encoded using Golomb-Rice but directly encoded
+            /// by esc_bits bits.
+            public uint RiceDecode(int escape, int escapeBits)
+            {
+                //q, quotient = n//m, with m = 2^k (Rice coding)
+                var prefix = BitstreamZeros();
+                if (prefix >= escape)
+                {
+                    // n
+                    Debug.Assert(_bitStream.Read(escapeBits, out var value));
+                    return value;
+                }
+                else if (K > 0)
+                {
+                    // Golomb-Rice coding : n = q * 2^k + r, with r is next k bits. r is n - (q*2^k)
+                    Debug.Assert(_bitStream.Read(K, out var value));
+                    return (prefix << K) | value;
+                }
+                else
+                {
+                    // q
+                    return prefix;
+                }
+            }
+
+            //let bit_code = p.rice.adaptive_rice_decode(true, PREDICT_K_ESCAPE, PREDICT_K_ESCBITS, PREDICT_K_MAX)?;
+            /// Adaptive Golomb-Rice decoding, by adapting k value
+            /// Sometimes adapting is based on the next coefficent (n) instead
+            /// of current (x) coefficent. So you can disable it with `adapt_k`
+            /// and update k later.
+            /// Returns bit code.
+            public uint AdaptiveRiceDecode(
+                bool adaptK,
+                int escape,
+                int escapeBits,
+                int maxK
+            )
+            {
+                var result = RiceDecode(escape, escapeBits); //returns bit code.
+                if (adaptK)
+                    K = PredictKParamMax(K, result, maxK);
+                return result;
+            }
+
+            public void UpdateK(uint bitCodeValue, int maxK)
+            {
+                K = PredictKParamMax(K, bitCodeValue, maxK);
+            }
+
+            /// Return the positive number of 0-bits in bitstream.
+            /// All 0-bits are consumed.
+            private uint BitstreamZeros() => _bitStream.ReadUnary1().Value;
+
+            /// Predict K parameter with maximum constraint
+            /// Golomb-Rice becomes more efficient when used with an adaptive
+            /// K parameter. This is done by predicting the next K value for the
+            /// next sample value.
+            private int PredictKParamMax(int previousK, uint bitCodeValue, int maxK)
+            {
+                var newK = previousK;
+
+                if (bitCodeValue >> previousK > 2)
+                    newK += 1;
+                if (bitCodeValue >> previousK > 5)
+                    newK += 1;
+                if (bitCodeValue < ((1 << previousK) >> 1))
+                    newK -= 1;
+
+                return maxK > 0 ? Math.Min(newK, maxK) : newK;
+            }
+        }
 
         static void crxDecodeLine(CrxBandParam param, byte[] bandBuf)
         {
@@ -323,13 +1001,13 @@ namespace Devdeb.Images.CanonRaw.Tests
                 {
                     if (param.RoundedBitsMask <= 0)
                     {
-                        param.LineBuf0 = param.ParamData;
-                        param.LineBuf1 = param.LineBuf0.Slice(0, lineLength);
-                        int* lineBuf = param.LineBuf1 + 1;
-                        if (crxDecodeTopLine(param))
-                            return -1;
-                        memcpy(bandBuf, lineBuf, param->subbandWidth * sizeof(int32_t));
-                        ++param->curLine;
+                        //param.LineBuf0 = param.ParamData;
+                        //param.LineBuf1 = param.LineBuf0.Slice(0, lineLength);
+                        //int* lineBuf = param.LineBuf1 + 1;
+                        //if (crxDecodeTopLine(param))
+                        //    return -1;
+                        //memcpy(bandBuf, lineBuf, param->subbandWidth * sizeof(int32_t));
+                        //++param->curLine;
                     }
                     else
                     {
@@ -546,8 +1224,6 @@ namespace Devdeb.Images.CanonRaw.Tests
             public int[] NonProgrData { get; set; } = null;
             public bool SupportsPartial { get; set; }
         };
-
-
 
 
         static Bitmap Create(Memory<byte> plane1Memory, Memory<byte> green1, Memory<byte> green2, Memory<byte> blue)
@@ -784,11 +1460,25 @@ namespace Devdeb.Images.CanonRaw.Tests
 
         public ReadOnlyBitStream(Memory<byte> buffer)
         {
+            //for (int i = 0; i != buffer.Length; i += 2)
+            //{
+            //    var a = buffer.Slice(i, 2);
+            //    ChangeEndian(a).CopyTo(a);
+            //}
+
             _buffer = buffer;
             _pointer = new BufferPointer();
         }
 
-        public bool Read(int bitsCount, out int value)
+        private static Memory<byte> ChangeEndian(Memory<byte> buffer)
+        {
+            Memory<byte> result = new byte[buffer.Length];
+            for (int i = 0; i < result.Length; i++)
+                result.Span[i] = buffer.Span[result.Length - i - 1];
+            return result;
+        }
+
+        public bool Read(int bitsCount, out uint value)
         {
             value = default;
 
@@ -804,11 +1494,32 @@ namespace Devdeb.Images.CanonRaw.Tests
                 readCount = Math.Min(byteRemainder, bitsCount);
                 value <<= readCount;
                 var byteRemaindedValue = _buffer.Span[_pointer.ByteIndex] & _masks[byteRemainder - 1];
-                value |= byteRemaindedValue >> (byteRemainder - readCount);
+                value |= (uint)(byteRemaindedValue >> (byteRemainder - readCount));
             }
 
             return true;
         }
+
+        /// <summary>
+        /// Returns count the number of 0 bits in the stream until the next 1 bit.
+        /// </summary>
+        /// <returns>Amount of 0 bits read.</returns>
+        public uint? ReadUnary1()
+        {
+            // fast realization
+            uint counter = 0;
+            for (; ; )
+            {
+                if (!Read(1, out uint value))
+                    return null;
+
+                if (value == 1)
+                    return counter;
+                else
+                    counter++;
+            }
+        }
+
         public bool Seek(int bitsCount, SeekOrigin seekOrigin = SeekOrigin.Current)
         {
             switch (seekOrigin)

@@ -23,6 +23,7 @@ namespace Devdeb.Audio.Tests
 
 		static unsafe void Main(string[] args)
 		{
+
 			ushort value = 40234;
 
 			byte[] bytes = new byte[2];
