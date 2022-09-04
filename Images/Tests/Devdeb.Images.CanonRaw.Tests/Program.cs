@@ -278,52 +278,88 @@ namespace Devdeb.Images.CanonRaw.Tests
 
             //band->width = bandWidthExCoef + bandWidth; //tile->width
             //band->height = bandHeightExCoef + bandHeight; //tile->height
-            var red = DecodePlane(redMemory, hdr, tileHeader, 0);
-            var green1 = DecodePlane(green1Memory, hdr, tileHeader, 1);
-            var green2 = DecodePlane(green2Memory, hdr, tileHeader, 2);
-            var blue = DecodePlane(blueMemory, hdr, tileHeader, 3);
+
+            List<ushort[]> red = null;
+            List<ushort[]> green1 = null;
+            List<ushort[]> green2 = null;
+            List<ushort[]> blue = null;
+            Task[] planeDecode = new Task[]
+            {
+                Task.Run(() => red = DecodePlane(redMemory, hdr, tileHeader, 0)),
+                Task.Run(() => green1 = DecodePlane(green1Memory, hdr, tileHeader, 1)),
+                Task.Run(() => green2 = DecodePlane(green2Memory, hdr, tileHeader, 2)),
+                Task.Run(() => blue = DecodePlane(blueMemory, hdr, tileHeader, 3))
+            };
+            Task.WhenAll(planeDecode).GetAwaiter().GetResult();
+
 
 
             var subbandWidth = red[0].Length;
             var subbandHeight = red.Count;
 
 
-            Bitmap bitmap = new(subbandWidth, subbandHeight);
-
-            var max_val = (1 << 14) - 1;
-
-            for (int height = 0; height != subbandHeight; height++)
-                for (int width = 0; width != subbandWidth; width++)
-                {
-                    var redValue = ((double)red[height][width] / max_val) * 255;
-                    var green1Value = ((double)green1[height][width] / max_val) * 255 / 2;
-                    var green2Value = ((double)green2[height][width] / max_val) * 255;
-                    var blueValue = ((double)blue[height][width] / max_val) * 255;
-
-                    bitmap.SetPixel(width, height, Color.FromArgb((int)redValue, (int)green1Value, (int)blueValue));
-                }
-            bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
-
-
-
-            //Bitmap bitmap = new(subbandWidth * 2, subbandHeight * 2);
+            //Bitmap bitmap = new(subbandWidth, subbandHeight);
 
             //var max_val = (1 << 14) - 1;
 
-            //for (int height = 0; height != subbandHeight - 1; height++)
-            //    for (int width = 0; width != subbandWidth - 1; width++)
+            //for (int height = 0; height != subbandHeight; height++)
+            //    for (int width = 0; width != subbandWidth; width++)
             //    {
             //        var redValue = ((double)red[height][width] / max_val) * 255;
             //        var green1Value = ((double)green1[height][width] / max_val) * 255;
             //        var green2Value = ((double)green2[height][width] / max_val) * 255;
             //        var blueValue = ((double)blue[height][width] / max_val) * 255;
 
-            //        bitmap.SetPixel(width * 2, height * 2, Color.FromArgb((int)redValue, 0, 0));
-            //        bitmap.SetPixel(width * 2 + 1, height * 2, Color.FromArgb(0, (int)green1Value, 0));
-            //        bitmap.SetPixel(width * 2, height * 2 + 1, Color.FromArgb(0, (int)green2Value, 0));
-            //        bitmap.SetPixel(width * 2 + 1, height * 2 + 1, Color.FromArgb(0, 0, (int)blueValue));
+            //        bitmap.SetPixel(width, height, Color.FromArgb((int)redValue, (int)green1Value, (int)blueValue));
             //    }
             //bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
+
+
+
+            Bitmap bitmap = new(subbandWidth * 2, subbandHeight * 2);
+
+            var max_val = (1 << 14) - 1;
+
+            for (int height = 0; height != subbandHeight - 1; height++)
+                for (int width = 0; width != subbandWidth - 1; width++)
+                {
+                    var redValue = ((double)red[height][width] / max_val) * 255;
+                    var green1Value = ((double)green1[height][width] / max_val) * 255;
+                    var green2Value = ((double)green2[height][width] / max_val) * 255;
+                    var blueValue = ((double)blue[height][width] / max_val) * 255;
+
+                    bitmap.SetPixel(width * 2, height * 2, Color.FromArgb((int)redValue, 0, 0));
+                    bitmap.SetPixel(width * 2 + 1, height * 2, Color.FromArgb(0, (int)green1Value, 0));
+                    bitmap.SetPixel(width * 2, height * 2 + 1, Color.FromArgb(0, (int)green2Value, 0));
+                    bitmap.SetPixel(width * 2 + 1, height * 2 + 1, Color.FromArgb(0, 0, (int)blueValue));
+                }
+
+
+            var leftOpticalBlackOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.LeftOpticalBlackOffset;
+            Vector2D leftOpticalBlackPoint1 = new(leftOpticalBlackOffset.Left, leftOpticalBlackOffset.Top);
+            Vector2D leftOpticalBlackPoint2 = new(leftOpticalBlackOffset.Right, leftOpticalBlackOffset.Bottom);
+            DrawRectangle(bitmap, leftOpticalBlackPoint1, leftOpticalBlackPoint2, Color.Red);
+
+            var topOpticalBlackOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.TopOpticalBlackOffset;
+            Vector2D topOpticalBlackPoint1 = new(topOpticalBlackOffset.Left, topOpticalBlackOffset.Top);
+            Vector2D topOpticalBlackPoint2 = new(topOpticalBlackOffset.Right, topOpticalBlackOffset.Bottom);
+            DrawRectangle(bitmap, topOpticalBlackPoint1, topOpticalBlackPoint2, Color.Red);
+
+
+            var cropOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.CropOffset;
+            Vector2D cropOffsetPoint1 = new(cropOffset.Left, cropOffset.Top);
+            Vector2D cropOffsetPoint2 = new(cropOffset.Right, cropOffset.Bottom);
+            DrawRectangle(bitmap, cropOffsetPoint1, cropOffsetPoint2, Color.DarkRed);
+
+
+            var activeAreaOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.ActiveAreaOffset;
+            Vector2D activeAreaOffsetPoint1 = new(activeAreaOffset.Left, activeAreaOffset.Top);
+            Vector2D activeAreaOffsetPoint2 = new(activeAreaOffset.Right, activeAreaOffset.Bottom);
+            DrawRectangle(bitmap, activeAreaOffsetPoint1, activeAreaOffsetPoint2, Color.OrangeRed);
+
+            //DrawRectangle(bitmap, new(10, 10), new(500, 50), Color.Red);
+
+            bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
 
             CreateBitmap(redMemory).Save(@"C:\Users\lehac\Desktop\test_raw_picture.jpg", ImageFormat.Jpeg);
             CreateBitmap(green1Memory).Save(@"C:\Users\lehac\Desktop\test_raw_picture2.jpg", ImageFormat.Jpeg);
@@ -332,6 +368,47 @@ namespace Devdeb.Images.CanonRaw.Tests
 
             byte[] nameMemory = tileMemory.ToArray();
             var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
+        }
+
+        public struct Vector2D
+        {
+            public Vector2D(int x, int y)
+            {
+                X = x;
+                Y = y;
+            }
+
+            public int X { get; set; }
+            public int Y { get; set; }
+
+            public double Magnitude => Math.Sqrt(Math.Pow(X, 2) + Math.Pow(Y, 2));
+
+            public static Vector2D operator -(Vector2D a, Vector2D b) => new(a.X - b.X, a.Y - b.Y);
+        }
+
+
+        private static void DrawRectangle(Bitmap bitmap, Vector2D point1, Vector2D point2, Color color)
+        {
+            Vector2D direction = point2 - point1;
+
+            Vector2D topLeftPoint = new(Math.Min(point1.X, point2.X), Math.Min(point1.Y, point2.Y));
+            int xPixelCount = Math.Abs(direction.X);
+            int yPixelCount = Math.Abs(direction.Y);
+
+            if (bitmap.Width < topLeftPoint.X + xPixelCount || bitmap.Height < topLeftPoint.Y + yPixelCount)
+                throw new InvalidOperationException("The rectangle is out of bitmap.");
+
+            for (int xOffset = 0; xOffset != xPixelCount; xOffset++)
+            {
+                bitmap.SetPixel(topLeftPoint.X + xOffset, topLeftPoint.Y, color);
+                bitmap.SetPixel(topLeftPoint.X + xOffset, topLeftPoint.Y + yPixelCount, color);
+            }
+
+            for (int yOffset = 0; yOffset != yPixelCount; yOffset++)
+            {
+                bitmap.SetPixel(topLeftPoint.X, topLeftPoint.Y + yOffset, color);
+                bitmap.SetPixel(topLeftPoint.X + xPixelCount, topLeftPoint.Y + yOffset, color);
+            }
         }
 
         /// Decode top line without a previous K buffer
@@ -1161,7 +1238,7 @@ namespace Devdeb.Images.CanonRaw.Tests
             param.BitStream.CurPos = 0;
             param.BitStream.CurBufSize = 0;
             param.BitStream.CurBufOffset = 0; // видимо текущий адрес начала subband
-            //param.BitStream.Input = img->input;
+                                              //param.BitStream.Input = img->input;
             param.BitStream.Input = plane;
 
             param.BitStream.FillBuffer();
@@ -1404,7 +1481,7 @@ namespace Devdeb.Images.CanonRaw.Tests
             public short ExposureTimeDenominator { get; }
             public int IsoSpeedRating { get; }
 
-            public string F => $"F/{(float)FNumberNumerator / FNumberDenominator }";
+            public string F => $"F/{(float)FNumberNumerator / FNumberDenominator}";
         }
 
         private static Memory<byte> ChangeEndian(Memory<byte> buffer)
