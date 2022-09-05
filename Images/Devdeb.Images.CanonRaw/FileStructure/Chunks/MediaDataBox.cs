@@ -3,7 +3,7 @@ using Devdeb.Serialization.Serializers.System.BigEndian;
 using Devdeb.Serialization.Serializers.System.Collections;
 using System;
 
-namespace Devdeb.Images.CanonRaw.Tests.Chunks
+namespace Devdeb.Images.CanonRaw.FileStructure.Chunks
 {
 	public class MediaDataBox
 	{

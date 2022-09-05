@@ -6,9 +6,8 @@ using System.Drawing;
 using System.IO;
 using System.Drawing.Imaging;
 using System.Diagnostics;
-using System.Runtime.ConstrainedExecution;
 
-namespace Devdeb.Images.CanonRaw.Tests.Chunks
+namespace Devdeb.Images.CanonRaw.FileStructure.Chunks
 {
     public class MovieBox
     {

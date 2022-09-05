@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace Devdeb.Images.CanonRaw.Tests.Chunks
+namespace Devdeb.Images.CanonRaw.FileStructure.Chunks
 {
-	public struct Chunk
+    public struct Chunk
 	{
 		public uint Length { get; init; }
 		public string Name { get; init; }

@@ -1,7 +1,7 @@
 ﻿using Devdeb.Serialization.Serializers.System;
 using System;
 
-namespace Devdeb.Images.CanonRaw.Tests.Chunks
+namespace Devdeb.Images.CanonRaw.FileStructure.Chunks
 {
 	public static class ChunkNames
 	{

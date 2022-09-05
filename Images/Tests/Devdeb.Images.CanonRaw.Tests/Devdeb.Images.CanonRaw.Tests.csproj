@@ -7,12 +7,17 @@
 		<LangVersion>latest</LangVersion>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+	  <Optimize>False</Optimize>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<PackageReference Include="System.Drawing.Common" Version="4.5.1" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\Serialization\Devdeb.Serialization\Devdeb.Serialization.csproj" />
+		<ProjectReference Include="..\..\Devdeb.Images.CanonRaw\Devdeb.Images.CanonRaw.csproj" />
 	</ItemGroup>
 
 </Project>
