@@ -35,7 +35,7 @@ namespace Devdeb.Images.CanonRaw.Decoding
             uint run_cnt = 1;
             // See T.87 A.7.1.2 Code segment A.15
             // Bitstream 111110... means 5 lookups into J to decode final RUNcnt
-            while (run_cnt != remaining && decoder.BitStream.Read(1, out var value) && value == 1)
+            while (run_cnt != remaining && decoder.BitStream.TryRead(1, out var value) && value == 1)
             {
                 // JS is precalculated (1 << J[RUNindex])
                 run_cnt += JSHIFT[sParam];
@@ -51,7 +51,7 @@ namespace Devdeb.Images.CanonRaw.Decoding
             {
                 if (J[sParam] > 0)
                 {
-                    bool wasReaded = decoder.BitStream.Read(J[sParam], out uint value);
+                    bool wasReaded = decoder.BitStream.TryRead(J[sParam], out uint value);
                     Debug.Assert(wasReaded);
                     run_cnt += value;
                 }

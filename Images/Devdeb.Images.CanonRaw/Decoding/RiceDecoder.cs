@@ -28,14 +28,14 @@ namespace Devdeb.Images.CanonRaw.Decoding
             if (prefix >= escape)
             {
                 // n
-                bool wasReaded = _bitStream.Read(escapeBits, out var value);
+                bool wasReaded = _bitStream.TryRead(escapeBits, out var value);
                 Debug.Assert(wasReaded);
                 return value;
             }
             else if (K > 0)
             {
                 // Golomb-Rice coding : n = q * 2^k + r, with r is next k bits. r is n - (q*2^k)
-                bool wasReaded = _bitStream.Read(K, out var value);
+                bool wasReaded = _bitStream.TryRead(K, out var value);
                 Debug.Assert(wasReaded);
                 return (prefix << K) | value;
             }

@@ -34,7 +34,7 @@ namespace Devdeb.Images.CanonRaw.Decoding
                 }
                 else
                 {
-                    if (riceDecoder.BitStream.Read(1, out uint value) && value == 1)
+                    if (riceDecoder.BitStream.TryRead(1, out uint value) && value == 1)
                     {
                         var nSyms = RunLengthDecoder.SymbolRunCount(ref sParam, riceDecoder, remaining);
                         remaining = Extensions.SaturatingSub(remaining, nSyms);
@@ -95,7 +95,7 @@ namespace Devdeb.Images.CanonRaw.Decoding
                 }
                 else
                 {
-                    if (riceDecoder.BitStream.Read(1, out uint value) && value == 1)
+                    if (riceDecoder.BitStream.TryRead(1, out uint value) && value == 1)
                     {
                         Debug.Assert(remaining != 1);
                         var nSyms = RunLengthDecoder.SymbolRunCount(ref sParam, riceDecoder, remaining);
@@ -170,7 +170,7 @@ namespace Devdeb.Images.CanonRaw.Decoding
                     coefficients.X = coefficients.A;
                 else
                 {
-                    if (riceDecoder.BitStream.Read(1, out uint value) && value == 1)
+                    if (riceDecoder.BitStream.TryRead(1, out uint value) && value == 1)
                     {
                         var nSyms = RunLengthDecoder.SymbolRunCount(ref sParam, riceDecoder, remaining);
                         remaining = Extensions.SaturatingSub(remaining, nSyms);
@@ -229,7 +229,7 @@ namespace Devdeb.Images.CanonRaw.Decoding
                 if (coefficients.A == coefficients.B && coefficients.A == coefficients.D)
                 {
                     // different than step [0104], where Condition: "a=c and c=b and b=d", c not used
-                    if (riceDecoder.BitStream.Read(1, out uint value) && value == 1)
+                    if (riceDecoder.BitStream.TryRead(1, out uint value) && value == 1)
                     {
                         var nSyms = RunLengthDecoder.SymbolRunCount(ref sParam, riceDecoder, remaining);
                         remaining = Extensions.SaturatingSub(remaining, nSyms);

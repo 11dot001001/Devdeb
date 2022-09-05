@@ -4,6 +4,7 @@ using Devdeb.Images.CanonRaw.FileStructure;
 using Devdeb.Images.CanonRaw.FileStructure.Chunks;
 using Devdeb.Images.CanonRaw.FileStructure.Image;
 using Devdeb.Images.CanonRaw.FileStructure.Metadata;
+using Devdeb.Images.CanonRaw.IO;
 using Devdeb.Serialization.Serializers.System;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace Devdeb.Images.CanonRaw.Tests
@@ -112,11 +114,13 @@ namespace Devdeb.Images.CanonRaw.Tests
             var subbandWidth = red[0].Length;
             var subbandHeight = red.Count;
 
-            Bitmap bitmap = new(subbandWidth * 2, subbandHeight * 2);
 
             var max_val = (1 << 14) - 1;
 
-            for (int height = 0; height != subbandHeight - 1; height++)
+            byte[] imageBuffer = new byte[subbandHeight * 2 * subbandWidth * 2 * 3];
+            var parallelOptions = new ParallelOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount };
+            Parallel.For(0, subbandHeight - 1, parallelOptions, height =>
+            {
                 for (int width = 0; width != subbandWidth - 1; width++)
                 {
                     var redValue = ((double)red[height][width] / max_val) * 255;
@@ -124,18 +128,30 @@ namespace Devdeb.Images.CanonRaw.Tests
                     var green2Value = ((double)green2[height][width] / max_val) * 255;
                     var blueValue = ((double)blue[height][width] / max_val) * 255;
 
-                    bitmap.SetPixel(width * 2, height * 2, Color.FromArgb((int)redValue, 0, 0));
-                    bitmap.SetPixel(width * 2 + 1, height * 2, Color.FromArgb(0, (int)green1Value, 0));
-                    bitmap.SetPixel(width * 2, height * 2 + 1, Color.FromArgb(0, (int)green2Value, 0));
-                    bitmap.SetPixel(width * 2 + 1, height * 2 + 1, Color.FromArgb(0, 0, (int)blueValue));
+                    imageBuffer[GetByteIndex(width * 2, height * 2, subbandWidth * 2)] = (byte)redValue;
+                    imageBuffer[GetByteIndex(width * 2 + 1, height * 2, subbandWidth * 2) + 1] = (byte)green1Value;
+                    imageBuffer[GetByteIndex(width * 2, height * 2 + 1, subbandWidth * 2) + 1] = (byte)green2Value;
+                    imageBuffer[GetByteIndex(width * 2 + 1, height * 2 + 1, subbandWidth * 2) + 2] = (byte)blueValue;
                 }
+            });
 
-            DrawImageBoundaries(bitmap, crxHdImageTrack);
+            Bitmap bitmap = new(subbandWidth * 2, subbandHeight * 2, PixelFormat.Format24bppRgb);
+            Rectangle rect = new(0, 0, bitmap.Width, bitmap.Height);
+            BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.ReadWrite, bitmap.PixelFormat);
+            Marshal.Copy(imageBuffer, 0, bmpData.Scan0, imageBuffer.Length);
+            bitmap.UnlockBits(bmpData);
+
+            //DrawImageBoundaries(bitmap, crxHdImageTrack);
 
             bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
 
             byte[] nameMemory = tileMemory.ToArray();
             var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
+        }
+
+        private static int GetByteIndex(int width, int height, int lineLength)
+        {
+            return (height * lineLength + width) * 3;
         }
 
         private static void DrawImageBoundaries(Bitmap bitmap, TrackBox crxHdImageTrack)

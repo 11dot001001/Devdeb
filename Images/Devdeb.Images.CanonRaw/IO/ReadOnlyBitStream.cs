@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Numerics;
 
 namespace Devdeb.Images.CanonRaw.IO
 {
@@ -26,7 +27,7 @@ namespace Devdeb.Images.CanonRaw.IO
             _pointer = new BufferPointer();
         }
 
-        public bool Read(int bitsCount, out uint value)
+        public bool TryRead(int bitsCount, out uint value)
         {
             value = default;
 
@@ -54,17 +55,21 @@ namespace Devdeb.Images.CanonRaw.IO
         /// <returns>Amount of 0 bits read.</returns>
         public uint? ReadUnary1()
         {
-            // fast realization
-            uint counter = 0;
+            int zeroCounter = 0;
             for (; ; )
             {
-                if (!Read(1, out uint value))
-                    return null;
+                int byteRemainder = 8 - _pointer.BitIndex;
+                int byteRemaindedValue = _buffer.Span[_pointer.ByteIndex] & _masks[byteRemainder - 1];
+                var leadingZero = BitOperations.LeadingZeroCount((uint)byteRemaindedValue) - 24 - _pointer.BitIndex;
 
-                if (value == 1)
-                    return counter;
-                else
-                    counter++;
+                zeroCounter += leadingZero;
+                _pointer.AddBits(leadingZero);
+
+                if (leadingZero == byteRemainder)
+                    continue;
+
+                _pointer.AddBits(1);
+                return (uint)zeroCounter;
             }
         }
 
