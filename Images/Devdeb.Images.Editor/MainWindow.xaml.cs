@@ -1,43 +1,57 @@
 ﻿using Devdeb.Images.CanonRaw.Decoding;
-using Devdeb.Images.CanonRaw.Drawing;
 using Devdeb.Images.CanonRaw.FileStructure;
 using Devdeb.Images.CanonRaw.FileStructure.Chunks;
 using Devdeb.Images.CanonRaw.FileStructure.Image;
-using Devdeb.Images.CanonRaw.FileStructure.Metadata;
 using Devdeb.Serialization.Serializers.System;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
-namespace Devdeb.Images.CanonRaw.Tests
+namespace Devdeb.Images.Editor
 {
-    internal class Program
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : Window
     {
-        private const string _filePath = @"C:\Users\lehac\Desktop\IMG_3184.CR3";
-
-        static async Task Main(string[] args)
+        public MainWindow()
         {
-            using var fileStream = new FileStream(_filePath, FileMode.Open, FileAccess.Read);
-            Memory<byte> buffer = new byte[fileStream.Length];
+            InitializeComponent();
+        }
 
-            int readBytesCount = 0;
-            for (; readBytesCount != fileStream.Length;)
-                readBytesCount += await fileStream.ReadAsync(buffer);
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
 
-            var signature = buffer.Slice(4, 8);
+            var imageBuffer = ReturnImageBuffer();
+
+            BitmapSource bitmapSource = BitmapSource.Create(5568, 3706, 0, 0, PixelFormats.Rgb24, BitmapPalettes.WebPalette, imageBuffer, 16704);
+
+            Image.Source = bitmapSource;
+        }
+
+        static byte[] ReturnImageBuffer()
+        {
+            using var fileStream = new FileStream(@"C:\Users\lehac\Desktop\IMG_3184.CR3", FileMode.Open, FileAccess.Read);
+            byte[] buffer = new byte[fileStream.Length];
+
+            fileStream.Read(buffer, 0, buffer.Length);
+
+            var signature = ((Memory<byte>)buffer).Slice(4, 8);
             string someString = "ftypcrx ";
             byte[] someStringBuffer = new byte[StringSerializer.Default.Size(someString)];
             StringSerializer.Default.Serialize(someString, someStringBuffer, 0);
             if (signature.Span.SequenceEqual(someStringBuffer))
-                Parse(0, buffer, 0, 0);
+                return Parse(0, buffer, 0, 0);
+            return null;
         }
 
-        static void Parse(int offset, Memory<byte> fileMemory, int @base, int depth)
+        static byte[] Parse(int offset, Memory<byte> fileMemory, int @base, int depth)
         {
             int localOffset = 0;
             List<Chunk> chunks = new();
@@ -49,22 +63,10 @@ namespace Devdeb.Images.CanonRaw.Tests
             }
             CannonRaw3 cannonRaw3 = new(chunks);
 
-            //ParseJpeg(cannonRaw3.MovieBox.JpegTrack, fileMemory);
-            MetaParser.ParseMeta(cannonRaw3.MovieBox.MetaTrack, fileMemory);
-            ParseCrxHdImage(cannonRaw3.MovieBox.CrxHdImageTrack, fileMemory);
-
-            //byte[] nameMemory = metaMemory.ToArray();
-            //var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
+            return ParseCrxHdImage(cannonRaw3.MovieBox.CrxHdImageTrack, fileMemory);
         }
 
-        static void ParseJpeg(TrackBox jpegTrack, Memory<byte> fileMemory)
-        {
-            var ctmd = jpegTrack.SampleTable;
-            using FileStream fileStream = new(@"C:\Users\lehac\Desktop\IMG_1231_fullSize.jpeg", FileMode.Create, FileAccess.Write);
-            fileStream.Write(fileMemory.Slice(checked((int)ctmd.Offset.Offset), ctmd.Size.EntrySizes[0]).Span);
-        }
-
-        static void ParseCrxHdImage(TrackBox crxHdImageTrack, Memory<byte> fileMemory)
+        static byte[] ParseCrxHdImage(TrackBox crxHdImageTrack, Memory<byte> fileMemory)
         {
             var ctmd = crxHdImageTrack.SampleTable;
 
@@ -132,46 +134,12 @@ namespace Devdeb.Images.CanonRaw.Tests
                 }
             });
 
-            Bitmap bitmap = new(subbandWidth * 2, subbandHeight * 2, PixelFormat.Format24bppRgb);
-            Rectangle rect = new(0, 0, bitmap.Width, bitmap.Height);
-            BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.ReadWrite, bitmap.PixelFormat);
-            Marshal.Copy(imageBuffer, 0, bmpData.Scan0, imageBuffer.Length);
-            bitmap.UnlockBits(bmpData);
-
-            //DrawImageBoundaries(bitmap, crxHdImageTrack);
-
-            bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
-
-            byte[] nameMemory = tileMemory.ToArray();
-            var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
+            return imageBuffer;
         }
 
         private static int GetByteIndex(int width, int height, int lineLength)
         {
             return (height * lineLength + width) * 3;
-        }
-
-        private static void DrawImageBoundaries(Bitmap bitmap, TrackBox crxHdImageTrack)
-        {
-            var leftOpticalBlackOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.LeftOpticalBlackOffset;
-            Vector2 leftOpticalBlackPoint1 = new(leftOpticalBlackOffset.Left, leftOpticalBlackOffset.Top);
-            Vector2 leftOpticalBlackPoint2 = new(leftOpticalBlackOffset.Right, leftOpticalBlackOffset.Bottom);
-            bitmap.DrawRectangle(leftOpticalBlackPoint1, leftOpticalBlackPoint2, Color.Red);
-
-            var topOpticalBlackOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.TopOpticalBlackOffset;
-            Vector2 topOpticalBlackPoint1 = new(topOpticalBlackOffset.Left, topOpticalBlackOffset.Top);
-            Vector2 topOpticalBlackPoint2 = new(topOpticalBlackOffset.Right, topOpticalBlackOffset.Bottom);
-            bitmap.DrawRectangle(topOpticalBlackPoint1, topOpticalBlackPoint2, Color.Red);
-
-            var cropOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.CropOffset;
-            Vector2 cropOffsetPoint1 = new(cropOffset.Left, cropOffset.Top);
-            Vector2 cropOffsetPoint2 = new(cropOffset.Right, cropOffset.Bottom);
-            bitmap.DrawRectangle(cropOffsetPoint1, cropOffsetPoint2, Color.DarkRed);
-
-            var activeAreaOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.ActiveAreaOffset;
-            Vector2 activeAreaOffsetPoint1 = new(activeAreaOffset.Left, activeAreaOffset.Top);
-            Vector2 activeAreaOffsetPoint2 = new(activeAreaOffset.Right, activeAreaOffset.Bottom);
-            bitmap.DrawRectangle(activeAreaOffsetPoint1, activeAreaOffsetPoint2, Color.OrangeRed);
         }
     }
 }

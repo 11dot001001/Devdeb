@@ -105,9 +105,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{EF4325
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{1128FBA4-692A-43D9-9815-26B54E3AE46B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Images.CanonRaw", "Images\Devdeb.Images.CanonRaw\Devdeb.Images.CanonRaw.csproj", "{B564152F-D5AF-4305-9673-AD7A05AEC67C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Images.CanonRaw", "Images\Devdeb.Images.CanonRaw\Devdeb.Images.CanonRaw.csproj", "{B564152F-D5AF-4305-9673-AD7A05AEC67C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Images.CanonRaw.Tests", "Images\Tests\Devdeb.Images.CanonRaw.Tests\Devdeb.Images.CanonRaw.Tests.csproj", "{953E933C-BF09-419C-A612-276949A21AAB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Devdeb.Images.CanonRaw.Tests", "Images\Tests\Devdeb.Images.CanonRaw.Tests\Devdeb.Images.CanonRaw.Tests.csproj", "{953E933C-BF09-419C-A612-276949A21AAB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Devdeb.Images.Editor", "Images\Devdeb.Images.Editor\Devdeb.Images.Editor.csproj", "{06FBA744-884E-4B1C-9D99-0357CBEE8884}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -703,6 +705,26 @@ Global
 		{953E933C-BF09-419C-A612-276949A21AAB}.Release|x64.Build.0 = Release|Any CPU
 		{953E933C-BF09-419C-A612-276949A21AAB}.Release|x86.ActiveCfg = Release|Any CPU
 		{953E933C-BF09-419C-A612-276949A21AAB}.Release|x86.Build.0 = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|ARM.Build.0 = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|x64.Build.0 = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Debug|x86.Build.0 = Debug|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|ARM.ActiveCfg = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|ARM.Build.0 = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|ARM64.Build.0 = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|x64.ActiveCfg = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|x64.Build.0 = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|x86.ActiveCfg = Release|Any CPU
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -751,6 +773,7 @@ Global
 		{1128FBA4-692A-43D9-9815-26B54E3AE46B} = {EF4325FC-5C17-4B2B-AC5D-A4703A98DE14}
 		{B564152F-D5AF-4305-9673-AD7A05AEC67C} = {EF4325FC-5C17-4B2B-AC5D-A4703A98DE14}
 		{953E933C-BF09-419C-A612-276949A21AAB} = {1128FBA4-692A-43D9-9815-26B54E3AE46B}
+		{06FBA744-884E-4B1C-9D99-0357CBEE8884} = {EF4325FC-5C17-4B2B-AC5D-A4703A98DE14}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E12EEAF3-BD7A-4629-8CC8-2DF20FE2C73A}
