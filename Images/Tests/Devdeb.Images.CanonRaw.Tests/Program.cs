@@ -18,7 +18,8 @@ namespace Devdeb.Images.CanonRaw.Tests
 {
     internal class Program
     {
-        private const string _filePath = @"C:\Users\lehac\Desktop\IMG_3184.CR3";
+        //IMG_5358 IMG_6876
+        private const string _filePath = @"C:\Users\lehac\Desktop\IMG_5358.CR3";
 
         static async Task Main(string[] args)
         {
@@ -60,7 +61,7 @@ namespace Devdeb.Images.CanonRaw.Tests
         static void ParseJpeg(TrackBox jpegTrack, Memory<byte> fileMemory)
         {
             var ctmd = jpegTrack.SampleTable;
-            using FileStream fileStream = new(@"C:\Users\lehac\Desktop\IMG_1231_fullSize.jpeg", FileMode.Create, FileAccess.Write);
+            using FileStream fileStream = new(@"C:\Users\lehac\Desktop\IMG_5358_fullSize.jpeg", FileMode.Create, FileAccess.Write);
             fileStream.Write(fileMemory.Slice(checked((int)ctmd.Offset.Offset), ctmd.Size.EntrySizes[0]).Span);
         }
 
@@ -120,17 +121,112 @@ namespace Devdeb.Images.CanonRaw.Tests
             {
                 for (int width = 0; width != subbandWidth - 1; width++)
                 {
-                    var redValue = ((double)red[height][width] / max_val) * 255;
-                    var green1Value = ((double)green1[height][width] / max_val) * 255;
-                    var green2Value = ((double)green2[height][width] / max_val) * 255;
-                    var blueValue = ((double)blue[height][width] / max_val) * 255;
+                    //default color
+                    //var redValue = ((double)red[height][width] / max_val) * 255;
+                    //var green1Value = ((double)green1[height][width] / max_val) * 255;
+                    //var green2Value = ((double)green2[height][width] / max_val) * 255;
+                    //var blueValue = ((double)blue[height][width] / max_val) * 1.2 * 255;
 
+                    // brightness borders: 47, 150 (in 8 bits colors)
+                    //default color
+
+                    var blackPoint =max_val * 30 / 256;
+                    var whitePoint = max_val * 65 / 256;
+                    var colorDepth = whitePoint - blackPoint;
+
+                    uint red14Bit = red[height][width] - (uint)(blackPoint);
+                    uint green114Bit = green1[height][width] - (uint)(blackPoint + colorDepth / 24);
+                    uint green214Bit = green2[height][width] - (uint)(blackPoint + colorDepth / 24);
+                    uint blue14Bit = blue[height][width] - (uint)(blackPoint);
+
+                    red14Bit = Math.Max(0, red14Bit);
+                    green114Bit = Math.Max(0, green114Bit);
+                    green214Bit = Math.Max(0, green214Bit);
+                    blue14Bit = Math.Max(0, blue14Bit);
+
+                    red14Bit = Math.Min((uint)colorDepth, red14Bit);
+                    green114Bit = Math.Min((uint)colorDepth, green114Bit);
+                    green214Bit = Math.Min((uint)colorDepth, green214Bit);
+                    blue14Bit = Math.Min((uint)colorDepth, blue14Bit);
+
+                    var redValue = ((double)red14Bit / colorDepth) * 255;
+                    var green1Value = ((double)green114Bit / colorDepth) * 255;
+                    var green2Value = ((double)green214Bit / colorDepth) * 255;
+                    var blueValue = ((double)blue14Bit / colorDepth) * 255;
+
+                    //try sRGB linear
+                    //var redColor = (double)red14Bit / colorDepth;
+                    //var green1Color = (double)green114Bit / colorDepth;
+                    //var green2Color = (double)green214Bit / colorDepth;
+                    //var blueColor = (double)blue14Bit / colorDepth;
+
+                    //var redColorValue = redColor * 3.2406d + green1Color * -1.5372d + blueColor * -0.4986d;
+                    //if (redColorValue <= 0.0031308d)
+                    //    redColorValue *= 12.92d;
+                    //else
+                    //    redColorValue = 1.055d * Math.Pow(redColorValue, 1 / 2.4) - 0.055;
+                    //redValue = redColorValue * 255;
+
+                    //var green1ColorValue = redColor * -0.9689d + green1Color * 1.8758d + blueColor * 0.0415d;
+                    //if (green1ColorValue <= 0.0031308d)
+                    //    green1ColorValue *= 12.92d;
+                    //else
+                    //    green1ColorValue = 1.055d * Math.Pow(green1ColorValue, 1 / 2.4) - 0.055;
+                    //green1Value = green1ColorValue * 255;
+
+                    //var green2ColorValue = redColor * -0.9689d + green2Color * 1.8758d + blueColor * 0.0415d;
+                    //if (green2ColorValue <= 0.0031308d)
+                    //    green2ColorValue *= 12.92d;
+                    //else
+                    //    green2ColorValue = 1.055d * Math.Pow(green2ColorValue, 1 / 2.4) - 0.055;
+                    //green2Value = green2ColorValue * 255;
+
+                    //var blueColorValue = redColor * 0.0557d + green2Color * -0.2040d + blueColor * 1.0570d;
+                    //if (blueColorValue <= 0.0031308d)
+                    //    blueColorValue *= 12.92d;
+                    //else
+                    //    blueColorValue = 1.055d * Math.Pow(blueColorValue, 1 / 2.4) - 0.055;
+                    //blueValue = blueColorValue * 255;
+
+                    //redValue = Math.Min(255, redValue);
+                    //green1Value = Math.Min(255, green1Value);
+                    //green2Value = Math.Min(255, green2Value);
+                    //blueValue = Math.Min(255, blueValue);
+
+                    //if ((redValue + green1Value + blueValue) / 3 < 128)
+                    //{
+                    //    redValue = Math.Min(255, redValue + 16);
+                    //    green1Value = Math.Min(255, green1Value + 16);
+                    //    green2Value = Math.Min(255, green2Value + 16);
+                    //    blueValue = Math.Min(255, blueValue + 16);
+                    //}
+
+                    //demosaic
                     imageBuffer[GetByteIndex(width * 2, height * 2, subbandWidth * 2)] = (byte)redValue;
+                    imageBuffer[GetByteIndex(width * 2, height * 2, subbandWidth * 2) + 1] = (byte)green1Value;
+                    imageBuffer[GetByteIndex(width * 2, height * 2, subbandWidth * 2) + 2] = (byte)blueValue;
+
+                    imageBuffer[GetByteIndex(width * 2 + 1, height * 2, subbandWidth * 2)] = (byte)redValue;
                     imageBuffer[GetByteIndex(width * 2 + 1, height * 2, subbandWidth * 2) + 1] = (byte)green1Value;
+                    imageBuffer[GetByteIndex(width * 2 + 1, height * 2, subbandWidth * 2) + 2] = (byte)blueValue;
+
+                    imageBuffer[GetByteIndex(width * 2, height * 2 + 1, subbandWidth * 2)] = (byte)redValue;
                     imageBuffer[GetByteIndex(width * 2, height * 2 + 1, subbandWidth * 2) + 1] = (byte)green2Value;
+                    imageBuffer[GetByteIndex(width * 2, height * 2 + 1, subbandWidth * 2) + 2] = (byte)blueValue;
+
+                    imageBuffer[GetByteIndex(width * 2 + 1, height * 2 + 1, subbandWidth * 2)] = (byte)redValue;
+                    imageBuffer[GetByteIndex(width * 2 + 1, height * 2 + 1, subbandWidth * 2) + 1] = (byte)green2Value;
                     imageBuffer[GetByteIndex(width * 2 + 1, height * 2 + 1, subbandWidth * 2) + 2] = (byte)blueValue;
+
+                    //bier
+                    //imageBuffer[GetByteIndex(width * 2, height * 2, subbandWidth * 2)] = (byte)redValue;
+                    //imageBuffer[GetByteIndex(width * 2 + 1, height * 2, subbandWidth * 2) + 1] = (byte)green1Value;
+                    //imageBuffer[GetByteIndex(width * 2, height * 2 + 1, subbandWidth * 2) + 1] = (byte)green2Value;
+                    //imageBuffer[GetByteIndex(width * 2 + 1, height * 2 + 1, subbandWidth * 2) + 2] = (byte)blueValue;
                 }
             });
+
+            // brightness borders: 47, 150 (in 8 bits colors)
 
             Bitmap bitmap = new(subbandWidth * 2, subbandHeight * 2, PixelFormat.Format24bppRgb);
             Rectangle rect = new(0, 0, bitmap.Width, bitmap.Height);
@@ -140,10 +236,38 @@ namespace Devdeb.Images.CanonRaw.Tests
 
             //DrawImageBoundaries(bitmap, crxHdImageTrack);
 
+            (int[] redF, int[] greenF, int[] blueF, int[] brightness) = GetColorsFrequencies(imageBuffer);
+
+            var minRed = redF.Min(x => x != 0);
+            var minGreen = greenF.Min(x => x != 0);
+            var minBlue = blueF.Min(x => x != 0);
+
+            ColorHistogramDrawing.DrawColorChannels(redF, greenF, blueF, brightness);
+            ColorHistogramDrawing.DrawColorChannels(bitmap, redF, greenF, blueF, brightness);
             bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
 
             byte[] nameMemory = tileMemory.ToArray();
             var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
+        }
+
+        private static (int[] red, int[] green, int[] blue, int[] brightness) GetColorsFrequencies(byte[] imageData)
+        {
+            int[] red = new int[256];
+            int[] green = new int[256];
+            int[] blue = new int[256];
+            int[] brightness = new int[256];
+
+            for (int i = 0; i < imageData.Length / 3; i += 3)
+            {
+                var redValue = imageData[i];
+                var greenValue = imageData[i + 1];
+                var blueValue = imageData[i + 2];
+                red[redValue]++;
+                green[greenValue]++;
+                blue[blueValue]++;
+                brightness[(redValue + greenValue + blueValue) / 3]++;
+            }
+            return (red, green, blue, brightness);
         }
 
         private static int GetByteIndex(int width, int height, int lineLength)
