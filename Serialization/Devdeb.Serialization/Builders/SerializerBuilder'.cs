@@ -34,25 +34,23 @@ namespace Devdeb.Serialization.Builders
 
 		private readonly Type _serializationType;
 		private List<MemberSerializaionInfo> _memberSerializaionInfos;
-		private SerializerFlags _serializerFlags;
 
 		public SerializerBuilder()
 		{
 			_serializationType = typeof(T);
 			VerifyAccessModifier(_serializationType);
 			_memberSerializaionInfos = new List<MemberSerializaionInfo>();
-			_serializerFlags = SerializerFlags.Empty;
 		}
 
 		public ISerializer<T> Build()
 		{
 			if (_memberSerializaionInfos.Count == 0)
 				throw new Exception("No serialize members specified.");
+
 			return SerializerBuilder.Build<T>(new TypeSerializationInfo
 			(
 				_serializationType,
-				_memberSerializaionInfos.ToArray(),
-				_serializerFlags
+				_memberSerializaionInfos.ToArray()
 			));
 		}
 

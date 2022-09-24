@@ -1,32 +1,31 @@
-﻿namespace Devdeb.Serialization.Serializers.System.BigEndian
+﻿using System;
+
+namespace Devdeb.Serialization.Serializers.System.BigEndian
 {
-	public class BigEndianUInt32Serializer : ConstantLengthSerializer<uint>
+	public class BigEndianUInt32Serializer : IConstantLengthSerializer<uint>
 	{
 		static public BigEndianUInt32Serializer Default { get; } = new BigEndianUInt32Serializer();
 
-		public BigEndianUInt32Serializer() : base(sizeof(uint)) { }
+		public int Size => sizeof(uint);
 
-		public unsafe override void Serialize(uint instance, byte[] buffer, int offset)
+        public unsafe void Serialize(uint instance, Span<byte> buffer)
 		{
-			VerifySerialize(instance, buffer, offset);
-
 			byte* instancePointer = (byte*)&instance;
 
-			buffer[offset] = *(instancePointer + 3);
-			buffer[offset + 1] = *(instancePointer + 2);
-			buffer[offset + 2] = *(instancePointer + 1);
-			buffer[offset + 3] = *instancePointer;
+			buffer[0] = *(instancePointer + 3);
+			buffer[1] = *(instancePointer + 2);
+			buffer[2] = *(instancePointer + 1);
+			buffer[3] = *instancePointer;
 		}
-		public unsafe override uint Deserialize(byte[] buffer, int offset)
+        public unsafe uint Deserialize(ReadOnlySpan<byte> buffer)
 		{
-			VerifyDeserialize(buffer, offset);
 			uint instance;
 			byte* instancePointer = (byte*)&instance;
-			*(instancePointer + 3) = buffer[offset];
-			*(instancePointer + 2) = buffer[offset + 1];
-			*(instancePointer + 1) = buffer[offset + 2];
-			*instancePointer = buffer[offset + 3];
+			*(instancePointer + 3) = buffer[0];
+			*(instancePointer + 2) = buffer[1];
+			*(instancePointer + 1) = buffer[2];
+			*instancePointer = buffer[3];
 			return instance;
 		}
-	}
+    }
 }

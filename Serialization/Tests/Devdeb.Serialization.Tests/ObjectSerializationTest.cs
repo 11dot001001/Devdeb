@@ -2,7 +2,7 @@
 
 namespace Devdeb.Serialization.Tests
 {
-	internal class ObjectSerializationTest
+	public class ObjectSerializationTest
 	{
 		public class Student
 		{
@@ -32,9 +32,9 @@ namespace Devdeb.Serialization.Tests
 				}
 			};
 
-			byte[] buffer = new byte[objectArraySerializer.Size(send)];
-			objectArraySerializer.Serialize(send, buffer, 0);
-			var result = objectArraySerializer.Deserialize(buffer, 0);
+			byte[] buffer = new byte[objectArraySerializer.GetSize(send)];
+			objectArraySerializer.Serialize(send, buffer);
+			var result = objectArraySerializer.Deserialize(buffer);
 		}
 	}
 }

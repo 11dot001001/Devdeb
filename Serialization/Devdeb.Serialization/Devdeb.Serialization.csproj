@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Authors>Devdeb</Authors>
     <Description>Tools for serialization</Description>
     <PackageProjectUrl>https://github.com/11dot001001/Devdeb</PackageProjectUrl>

@@ -1,21 +1,21 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using System;
+
+namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class UInt64Serializer : ConstantLengthSerializer<ulong>
+    public sealed class UInt64Serializer : IConstantLengthSerializer<ulong>
     {
         static public UInt64Serializer Default { get; } = new UInt64Serializer();
 
-        public UInt64Serializer() : base(sizeof(ulong)) { }
+        public int Size => sizeof(ulong);
 
-        public unsafe override void Serialize(ulong instance, byte[] buffer, int offset)
+        public unsafe void Serialize(ulong instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(ulong*)bufferPointer = instance;
         }
-        public unsafe override ulong Deserialize(byte[] buffer, int offset)
+        public unsafe ulong Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return *(ulong*)bufferPointer;
         }
     }

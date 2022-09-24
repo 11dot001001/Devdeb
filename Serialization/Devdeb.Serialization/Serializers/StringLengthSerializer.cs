@@ -3,7 +3,7 @@ using System;
 
 namespace Devdeb.Serialization.Serializers
 {
-	public sealed class StringLengthSerializer : Serializer<string>
+	public sealed class StringLengthSerializer : ISerializer<string>
 	{
 		static StringLengthSerializer()
 		{
@@ -33,27 +33,23 @@ namespace Devdeb.Serialization.Serializers
 			_int32Serializer = new Int32Serializer();
 		}
 
-		public override int Size(string instance)
-		{
-			VerifySize(instance);
-			return _int32Serializer.Size + _stringSerializer.Size(instance);
-		}
-		public override void Serialize(string instance, byte[] buffer, int offset)
-		{
-			VerifySerialize(instance, buffer, offset);
-			int stringSize = _stringSerializer.Size(instance);
-			_int32Serializer.Serialize(stringSize, buffer, ref offset);
+        public int GetSize(string instance) => _int32Serializer.Size + _stringSerializer.GetSize(instance);
+
+        public void Serialize(string instance, Span<byte> buffer)
+        {
+			int stringSize = _stringSerializer.GetSize(instance);
+			_int32Serializer.Serialize(stringSize, buffer);
 			if (stringSize == 0)
 				return;
-			_stringSerializer.Serialize(instance, buffer, offset);
+			_stringSerializer.Serialize(instance, buffer[_int32Serializer.Size..]);
 		}
-		public override string Deserialize(byte[] buffer, int offset, int? count = null)
+
+        public string Deserialize(ReadOnlySpan<byte> buffer)
 		{
-			VerifyDeserialize(buffer, offset, count);
-			int stringSize = _int32Serializer.Deserialize(buffer, ref offset);
+			int stringSize = _int32Serializer.Deserialize(buffer);
 			if (stringSize == 0)
 				return string.Empty;
-			return _stringSerializer.Deserialize(buffer, offset, stringSize);
+			return _stringSerializer.Deserialize(buffer.Slice(_int32Serializer.Size, stringSize));
 		}
-	}
+    }
 }

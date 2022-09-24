@@ -1,4 +1,6 @@
-﻿namespace Devdeb.Serialization.Tests
+﻿using System;
+
+namespace Devdeb.Serialization.Tests
 {
 	class Program
 	{

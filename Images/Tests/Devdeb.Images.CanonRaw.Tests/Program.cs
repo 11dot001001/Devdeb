@@ -18,8 +18,8 @@ namespace Devdeb.Images.CanonRaw.Tests
 {
     internal class Program
     {
-        //IMG_5358 IMG_6876
-        private const string _filePath = @"C:\Users\lehac\Desktop\IMG_5358.CR3";
+        //IMG_5358 IMG_6876 IMG_1231
+        private const string _filePath = @"C:\Users\lehac\Desktop\IMG_3184.CR3";
 
         static async Task Main(string[] args)
         {
@@ -130,13 +130,13 @@ namespace Devdeb.Images.CanonRaw.Tests
                     // brightness borders: 47, 150 (in 8 bits colors)
                     //default color
 
-                    var blackPoint =max_val * 30 / 256;
-                    var whitePoint = max_val * 65 / 256;
+                    var blackPoint = max_val * 0 / 256;
+                    var whitePoint = max_val * 105 / 256;
                     var colorDepth = whitePoint - blackPoint;
 
                     uint red14Bit = red[height][width] - (uint)(blackPoint);
-                    uint green114Bit = green1[height][width] - (uint)(blackPoint + colorDepth / 24);
-                    uint green214Bit = green2[height][width] - (uint)(blackPoint + colorDepth / 24);
+                    uint green114Bit = green1[height][width] - (uint)(blackPoint + colorDepth / 16);
+                    uint green214Bit = green2[height][width] - (uint)(blackPoint + colorDepth / 16);
                     uint blue14Bit = blue[height][width] - (uint)(blackPoint);
 
                     red14Bit = Math.Max(0, red14Bit);

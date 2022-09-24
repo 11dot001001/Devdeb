@@ -3,16 +3,18 @@ using System;
 
 namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class EnumSerializer<TEnum, TUnderlying> : ConstantLengthSerializer<TEnum>
+    public sealed class EnumSerializer<TEnum, TUnderlying> : IConstantLengthSerializer<TEnum>
         where TEnum : Enum
         where TUnderlying : struct
     {
-        static public EnumSerializer<TEnum, TUnderlying> Default = new EnumSerializer<TEnum, TUnderlying>();
+        static public EnumSerializer<TEnum, TUnderlying> Default = new();
 
         private readonly IConstantLengthSerializer<TUnderlying> _underlyingSerializer;
 
+        public int Size => _underlyingSerializer.Size;
+
         public EnumSerializer() : this((IConstantLengthSerializer<TUnderlying>)DefaultSerializer<TUnderlying>.Instance) { }
-        public EnumSerializer(IConstantLengthSerializer<TUnderlying> underlyingSerializer) : base(underlyingSerializer.Size)
+        public EnumSerializer(IConstantLengthSerializer<TUnderlying> underlyingSerializer)
         {
             Type enumUnderlyingType = Enum.GetUnderlyingType(typeof(TEnum));
             Type underlyingType = typeof(TUnderlying);
@@ -22,16 +24,13 @@ namespace Devdeb.Serialization.Serializers.System
             _underlyingSerializer = underlyingSerializer;
         }
 
-        public unsafe override void Serialize(TEnum instance, byte[] buffer, int offset)
+        public void Serialize(TEnum instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            _underlyingSerializer.Serialize((TUnderlying)(object)instance, buffer, offset);
+            _underlyingSerializer.Serialize((TUnderlying)(object)instance, buffer);
         }
-
-        public override TEnum Deserialize(byte[] buffer, int offset)
+        public TEnum Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            return (TEnum)(object)_underlyingSerializer.Deserialize(buffer, offset);
+            return (TEnum)(object)_underlyingSerializer.Deserialize(buffer);
         }
     }
 }

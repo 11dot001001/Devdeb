@@ -2,22 +2,20 @@
 
 namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class DateTimeSerializer : ConstantLengthSerializer<DateTime>
+    public sealed class DateTimeSerializer : IConstantLengthSerializer<DateTime>
     {
         static public DateTimeSerializer Default { get; } = new DateTimeSerializer();
 
-        public DateTimeSerializer() : base(8) { }
+        public int Size => 8;
 
-        public unsafe override void Serialize(DateTime instance, byte[] buffer, int offset)
+        public unsafe void Serialize(DateTime instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(long*)bufferPointer = instance.ToBinary();
         }
-        public unsafe override DateTime Deserialize(byte[] buffer, int offset)
+        public unsafe DateTime Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return DateTime.FromBinary(*(long*)bufferPointer);
         }
     }

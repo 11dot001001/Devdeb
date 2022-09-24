@@ -1,21 +1,21 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using System;
+
+namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class DecimalSerializer : ConstantLengthSerializer<decimal>
+    public sealed class DecimalSerializer : IConstantLengthSerializer<decimal>
     {
         static public DecimalSerializer Default { get; } = new DecimalSerializer();
 
-        public DecimalSerializer() : base(sizeof(decimal)) { }
+        public int Size => sizeof(decimal);
 
-        public unsafe override void Serialize(decimal instance, byte[] buffer, int offset)
+        public unsafe void Serialize(decimal instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(decimal*)bufferPointer = instance;
         }
-        public unsafe override decimal Deserialize(byte[] buffer, int offset)
+        public unsafe decimal Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return *(decimal*)bufferPointer;
         }
     }

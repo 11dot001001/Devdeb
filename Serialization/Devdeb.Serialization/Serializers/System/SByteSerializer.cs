@@ -1,20 +1,14 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using System;
+
+namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class SByteSerializer : ConstantLengthSerializer<sbyte>
+    public sealed class SByteSerializer : IConstantLengthSerializer<sbyte>
     {
         static public SByteSerializer Default { get; } = new SByteSerializer();
 
-        public SByteSerializer() : base(sizeof(sbyte)) { }
+        public int Size => sizeof(sbyte);
 
-        public unsafe override void Serialize(sbyte instance, byte[] buffer, int offset)
-        {
-            VerifySerialize(instance, buffer, offset);
-            buffer[offset] = (byte)instance;
-        }
-        public unsafe override sbyte Deserialize(byte[] buffer, int offset)
-        {
-            VerifyDeserialize(buffer, offset);
-            return (sbyte)buffer[offset];
-        }
+        public void Serialize(sbyte instance, Span<byte> buffer) => buffer[0] = (byte)instance;
+        public sbyte Deserialize(ReadOnlySpan<byte> buffer) => (sbyte)buffer[0];
     }
 }

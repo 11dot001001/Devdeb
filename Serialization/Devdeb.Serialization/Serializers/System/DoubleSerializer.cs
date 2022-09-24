@@ -1,21 +1,21 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using System;
+
+namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class DoubleSerializer : ConstantLengthSerializer<double>
+    public sealed class DoubleSerializer : IConstantLengthSerializer<double>
     {
         static public DoubleSerializer Default { get; } = new DoubleSerializer();
 
-        public DoubleSerializer() : base(sizeof(double)) { }
+        public int Size => sizeof(double);
 
-        public unsafe override void Serialize(double instance, byte[] buffer, int offset)
+        public unsafe void Serialize(double instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(double*)bufferPointer = instance;
         }
-        public unsafe override double Deserialize(byte[] buffer, int offset)
+        public unsafe double Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return *(double*)bufferPointer;
         }
     }

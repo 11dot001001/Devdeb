@@ -1,5 +1,6 @@
 ﻿using Devdeb.Serialization.Serializers;
 using Devdeb.Serialization.Serializers.System;
+using Devdeb.Serialization.Serializers.System.Collections;
 using System;
 
 namespace Devdeb.Serialization.Tests
@@ -22,23 +23,23 @@ namespace Devdeb.Serialization.Tests
 				string.Empty,
 				null
 			};
-			NullableSerializer<string> nullableStringSerializer = new NullableSerializer<string>(StringLengthSerializer.Default);
-			ArrayLengthSerializer<string> arraySerializer = new ArrayLengthSerializer<string>(nullableStringSerializer);
-			byte[] stringsBuffer = new byte[arraySerializer.Size(strings)];
-			arraySerializer.Serialize(strings, stringsBuffer, 0);
-			string[] stringsResult = arraySerializer.Deserialize(stringsBuffer, 0);
+			NullableSerializer<string> nullableStringSerializer = new(StringLengthSerializer.Default);
+			ArrayLengthSerializer<string> arraySerializer = new(nullableStringSerializer);
+			byte[] stringsBuffer = new byte[arraySerializer.GetSize(strings)];
+			arraySerializer.Serialize(strings, stringsBuffer);
+			string[] stringsResult = arraySerializer.Deserialize(stringsBuffer);
 
 			int? nullableInt = 10;
-			ConstantLengthNullableSerializer<int> constantLengthNullableSerializer = new ConstantLengthNullableSerializer<int>(Int32Serializer.Default);
+			ConstantLengthNullableSerializer<int> constantLengthNullableSerializer = new(Int32Serializer.Default);
 			byte[] buffer3 = new byte[constantLengthNullableSerializer.Size];
-			constantLengthNullableSerializer.Serialize(nullableInt, buffer3, 0);
-			int? nullableIntResult = constantLengthNullableSerializer.Deserialize(buffer3, 0);
+			constantLengthNullableSerializer.Serialize(nullableInt, buffer3);
+			int? nullableIntResult = constantLengthNullableSerializer.Deserialize(buffer3);
 
 			Guid guid = Guid.NewGuid();
 			GuidSerializer guidSerializer = new GuidSerializer();
 			byte[] guidBuffer = new byte[guidSerializer.Size];
-			guidSerializer.Serialize(guid, guidBuffer, 0);
-			Guid guidResult = guidSerializer.Deserialize(guidBuffer, 0);
+			guidSerializer.Serialize(guid, guidBuffer);
+			Guid guidResult = guidSerializer.Deserialize(guidBuffer);
 		}
 	}
 }

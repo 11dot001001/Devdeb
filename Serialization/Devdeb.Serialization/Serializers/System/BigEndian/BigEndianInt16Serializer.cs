@@ -1,27 +1,27 @@
-﻿namespace Devdeb.Serialization.Serializers.System.BigEndian
+﻿using System;
+
+namespace Devdeb.Serialization.Serializers.System.BigEndian
 {
-	public sealed class BigEndianInt16Serializer : ConstantLengthSerializer<short>
+	public sealed class BigEndianInt16Serializer : IConstantLengthSerializer<short>
 	{
 		static public BigEndianInt16Serializer Default { get; } = new BigEndianInt16Serializer();
 
-		public BigEndianInt16Serializer() : base(sizeof(short)) { }
+        public int Size => sizeof(short);
 
-		public unsafe override void Serialize(short instance, byte[] buffer, int offset)
+        public unsafe void Serialize(short instance, Span<byte> buffer)
 		{
-			VerifySerialize(instance, buffer, offset);
 			byte* instancePointer = (byte*)&instance;
 
-			buffer[offset] = *(instancePointer + 1);
-			buffer[offset + 1] = *instancePointer;
+			buffer[0] = *(instancePointer + 1);
+			buffer[1] = *instancePointer;
 		}
-		public unsafe override short Deserialize(byte[] buffer, int offset)
+        public unsafe short Deserialize(ReadOnlySpan<byte> buffer)
 		{
-			VerifyDeserialize(buffer, offset);
 			short instance;
 			byte* instancePointer = (byte*)&instance;
-			*(instancePointer + 1) = buffer[offset];
-			*instancePointer = buffer[offset + 1];
+			*(instancePointer + 1) = buffer[0];
+			*instancePointer = buffer[1];
 			return instance;
 		}
-	}
+    }
 }

@@ -1,21 +1,21 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using System;
+
+namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class BooleanSerializer : ConstantLengthSerializer<bool>
+    public sealed class BooleanSerializer : IConstantLengthSerializer<bool>
     {
         static public BooleanSerializer Default { get; } = new BooleanSerializer();
 
-        public BooleanSerializer() : base(sizeof(bool)) { }
+        public int Size => sizeof(bool);
 
-        public unsafe override void Serialize(bool instance, byte[] buffer, int offset)
+        public unsafe void Serialize(bool instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(bool*)bufferPointer = instance;
         }
-        public unsafe override bool Deserialize(byte[] buffer, int offset)
+        public unsafe bool Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return *(bool*)bufferPointer;
         }
     }

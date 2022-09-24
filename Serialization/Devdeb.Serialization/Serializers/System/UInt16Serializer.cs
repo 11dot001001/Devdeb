@@ -1,24 +1,23 @@
 ﻿using Devdeb.Serialization.Serializers.System.BigEndian;
+using System;
 
 namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class UInt16Serializer : ConstantLengthSerializer<ushort>
+    public sealed class UInt16Serializer : IConstantLengthSerializer<ushort>
     {
         static public UInt16Serializer Default { get; } = new UInt16Serializer();
         static public BigEndianUInt16Serializer BigEndian { get; } = BigEndianUInt16Serializer.Default;
 
-        public UInt16Serializer() : base(sizeof(ushort)) { }
+        public int Size => sizeof(ushort);
 
-        public unsafe override void Serialize(ushort instance, byte[] buffer, int offset)
+        public unsafe void Serialize(ushort instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(ushort*)bufferPointer = instance;
         }
-        public unsafe override ushort Deserialize(byte[] buffer, int offset)
+        public unsafe ushort Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return *(ushort*)bufferPointer;
         }
     }

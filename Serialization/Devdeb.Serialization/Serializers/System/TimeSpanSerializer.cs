@@ -2,22 +2,20 @@
 
 namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class TimeSpanSerializer : ConstantLengthSerializer<TimeSpan>
+    public sealed class TimeSpanSerializer : IConstantLengthSerializer<TimeSpan>
     {
         static public TimeSpanSerializer Default { get; } = new TimeSpanSerializer();
 
-        public TimeSpanSerializer() : base(8) { }
+        public int Size => 8;
 
-        public unsafe override void Serialize(TimeSpan instance, byte[] buffer, int offset)
+        public unsafe void Serialize(TimeSpan instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(TimeSpan*)bufferPointer = instance;
         }
-        public unsafe override TimeSpan Deserialize(byte[] buffer, int offset)
+        public unsafe TimeSpan Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return *(TimeSpan*)bufferPointer;
         }
     }

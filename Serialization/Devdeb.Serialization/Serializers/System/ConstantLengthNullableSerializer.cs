@@ -2,30 +2,29 @@
 
 namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class ConstantLengthNullableSerializer<T> : ConstantLengthSerializer<T?> where T : struct
+    public sealed class ConstantLengthNullableSerializer<T> : IConstantLengthSerializer<T?> where T : struct
     {
+        private static readonly BooleanSerializer _booleanSerializer = BooleanSerializer.Default;
+        
         private readonly IConstantLengthSerializer<T> _elementSerializer;
-        private readonly BooleanSerializer _booleanSerializer;
+
+        public int Size => _booleanSerializer.Size + _elementSerializer.Size;
 
         public ConstantLengthNullableSerializer(IConstantLengthSerializer<T> elementSerializer)
-            : base(new BooleanSerializer().Size + elementSerializer.Size, SerializerFlags.NullInstance)
         {
             _elementSerializer = elementSerializer ?? throw new ArgumentNullException(nameof(elementSerializer));
-            _booleanSerializer = new BooleanSerializer();
         }
 
-        public unsafe override void Serialize(T? instance, byte[] buffer, int offset)
+        public void Serialize(T? instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            _booleanSerializer.Serialize(instance.HasValue, buffer, ref offset);
-            T instanceValue = instance.HasValue ? instance.Value : default;
-            _elementSerializer.Serialize(instanceValue, buffer, offset);
+            _booleanSerializer.Serialize(instance.HasValue, buffer);
+            T instanceValue = instance ?? default;
+            _elementSerializer.Serialize(instanceValue, buffer[_booleanSerializer.Size..]);
         }
-        public unsafe override T? Deserialize(byte[] buffer, int offset)
+        public T? Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            bool hasValue = _booleanSerializer.Deserialize(buffer, ref offset);
-            return !hasValue ? null : (T?)_elementSerializer.Deserialize(buffer, offset);
+            bool hasValue = _booleanSerializer.Deserialize(buffer);
+            return !hasValue ? default : (T?)_elementSerializer.Deserialize(buffer[_booleanSerializer.Size..]);
         }
     }
 }

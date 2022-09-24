@@ -1,24 +1,23 @@
 ﻿using Devdeb.Serialization.Serializers.System.BigEndian;
+using System;
 
 namespace Devdeb.Serialization.Serializers.System
 {
-    public sealed class Int64Serializer : ConstantLengthSerializer<long>
+    public sealed class Int64Serializer : IConstantLengthSerializer<long>
     {
         static public Int64Serializer Default { get; } = new Int64Serializer();
         static public BigEndianInt64Serializer BigEndian { get; } = BigEndianInt64Serializer.Default;
 
-        public Int64Serializer() : base(sizeof(long)) { }
+        public int Size => sizeof(long);
 
-        public unsafe override void Serialize(long instance, byte[] buffer, int offset)
+        public unsafe void Serialize(long instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(long*)bufferPointer = instance;
         }
-        public unsafe override long Deserialize(byte[] buffer, int offset)
+        public unsafe long Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return *(long*)bufferPointer;
         }
     }

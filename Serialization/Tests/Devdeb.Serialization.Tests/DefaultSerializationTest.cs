@@ -23,9 +23,9 @@ namespace Devdeb.Serialization.Tests
 				Gender = Gender.Female
 			};
 
-			byte[] buffer = new byte[serializer.Size(testClass)];
-			serializer.Serialize(testClass, buffer, 0);
-			TestClass result = serializer.Deserialize(buffer, 0);
+			byte[] buffer = new byte[serializer.GetSize(testClass)];
+			serializer.Serialize(testClass, buffer);
+			TestClass result = serializer.Deserialize(buffer);
 
 			Test2();
 		}
@@ -43,9 +43,9 @@ namespace Devdeb.Serialization.Tests
 			serializerBuilder.AddMember(x => x.StringValue, StringLengthSerializer.Default);
 			ISerializer<TestClass> serializer = serializerBuilder.Build();
 
-			byte[] buffer = new byte[serializer.Size(testClass)];
-			serializer.Serialize(testClass, buffer, 0);
-			TestClass result = serializer.Deserialize(buffer, 0);
+			byte[] buffer = new byte[serializer.GetSize(testClass)];
+			serializer.Serialize(testClass, buffer);
+			TestClass result = serializer.Deserialize(buffer);
 		}
 
 		public class TestClass

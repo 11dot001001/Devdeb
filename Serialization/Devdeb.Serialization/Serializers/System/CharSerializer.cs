@@ -1,21 +1,21 @@
-﻿namespace Devdeb.Serialization.Serializers.System
+﻿using System;
+
+namespace Devdeb.Serialization.Serializers.System
 {
-    public class CharSerializer : ConstantLengthSerializer<char>
+    public class CharSerializer : IConstantLengthSerializer<char>
     {
         static public CharSerializer Default { get; } = new CharSerializer();
 
-        public CharSerializer() : base(sizeof(char)) { }
+        public int Size => sizeof(char);
 
-        public unsafe override void Serialize(char instance, byte[] buffer, int offset)
+        public unsafe void Serialize(char instance, Span<byte> buffer)
         {
-            VerifySerialize(instance, buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 *(char*)bufferPointer = instance;
         }
-        public unsafe override char Deserialize(byte[] buffer, int offset)
+        public unsafe char Deserialize(ReadOnlySpan<byte> buffer)
         {
-            VerifyDeserialize(buffer, offset);
-            fixed (byte* bufferPointer = &buffer[offset])
+            fixed (byte* bufferPointer = buffer)
                 return *(char*)bufferPointer;
         }
     }
