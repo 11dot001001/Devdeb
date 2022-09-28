@@ -6,7 +6,22 @@
         xmlns:local="clr-namespace:Devdeb.Images.Editor"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" Background="DarkGray">
-    <Grid>
+	<Grid>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="31*"></ColumnDefinition>
+			<ColumnDefinition Width="9*"></ColumnDefinition>
+		</Grid.ColumnDefinitions>
 		<Image RenderOptions.BitmapScalingMode="NearestNeighbor" RenderOptions.EdgeMode="Aliased" x:Name="Image"></Image>
+		<TabControl Grid.Column="1" Background="#FF494949">
+			<TabItem Header="Points" >
+				<StackPanel Margin="3px" Background="Gray">
+					<TextBlock>Black point</TextBlock>
+					<TextBox Background="DarkGray" Margin="3"></TextBox>
+					<Slider x:Name="BlackPointSlider" ValueChanged="BlackPointSlider_ValueChanged" Maximum="1" SmallChange="0.05"/>
+					<TextBlock>White point</TextBlock>
+					<Slider x:Name="WhitePointSlizer" ValueChanged="WhitePointSlizer_ValueChanged" Maximum="1" SmallChange="0.05"/>
+				</StackPanel>
+			</TabItem>
+		</TabControl>
 	</Grid>
 </Window>

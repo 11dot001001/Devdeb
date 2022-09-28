@@ -3,7 +3,6 @@ using Devdeb.Images.CanonRaw.Drawing;
 using Devdeb.Images.CanonRaw.FileStructure;
 using Devdeb.Images.CanonRaw.FileStructure.Chunks;
 using Devdeb.Images.CanonRaw.FileStructure.Image;
-using Devdeb.Images.CanonRaw.FileStructure.Metadata;
 using Devdeb.Serialization.Serializers.System;
 using System;
 using System.Collections.Generic;
@@ -19,53 +18,51 @@ namespace Devdeb.Images.CanonRaw.Tests
     internal class Program
     {
         //IMG_5358 IMG_6876
-        private const string _filePath = @"C:\Users\lehac\Desktop\IMG_5358.CR3";
+        private const string _filePath = @"C:\Users\lehac\Desktop\IMG_6879.CR3";
 
         static async Task Main(string[] args)
         {
             using var fileStream = new FileStream(_filePath, FileMode.Open, FileAccess.Read);
-            Memory<byte> buffer = new byte[fileStream.Length];
+            Memory<byte> fileMemory = new byte[fileStream.Length];
 
             int readBytesCount = 0;
             for (; readBytesCount != fileStream.Length;)
-                readBytesCount += await fileStream.ReadAsync(buffer);
+                readBytesCount += await fileStream.ReadAsync(fileMemory);
 
-            var signature = buffer.Slice(4, 8);
+            var signature = fileMemory.Slice(4, 8);
             string someString = "ftypcrx ";
             byte[] someStringBuffer = new byte[StringSerializer.Default.Size(someString)];
             StringSerializer.Default.Serialize(someString, someStringBuffer, 0);
             if (signature.Span.SequenceEqual(someStringBuffer))
-                Parse(0, buffer, 0, 0);
-        }
-
-        static void Parse(int offset, Memory<byte> fileMemory, int @base, int depth)
-        {
-            int localOffset = 0;
-            List<Chunk> chunks = new();
-            for (int chunkIndex = 0; localOffset < fileMemory.Length; chunkIndex++)
             {
-                var chunk = ChunkExtensions.ReadChunk(fileMemory[localOffset..]);
-                chunks.Add(chunk);
-                localOffset += checked((int)chunk.Length);
+                CannonRaw3 cannonRaw3 = new(fileMemory);
+                Pixel42[,] pixels = cannonRaw3.ParseCrxHdImage();
+
+                PixelConverter pixelConverter = new(cannonRaw3.MaxColorValue);
+                byte[] imageBuffer = PixelsConvert.ToPixel24ByteArray(
+                    pixels,
+                    pixelConverter.ConverPixels,
+                    cannonRaw3.ImageAreaSize,
+                    pixelConverter
+                );
+
+                History.ParseCrxHdImage(cannonRaw3.MovieBox.CrxHdImageTrack, fileMemory);
+                Bitmap bitmap = new(cannonRaw3.SubbandWidth * 2, cannonRaw3.SubbandHeight * 2, PixelFormat.Format24bppRgb);
+                Rectangle rect = new(0, 0, bitmap.Width, bitmap.Height);
+                BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.ReadWrite, bitmap.PixelFormat);
+                Marshal.Copy(imageBuffer, 0, bmpData.Scan0, imageBuffer.Length);
+                bitmap.UnlockBits(bmpData);
+                bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
             }
-            CannonRaw3 cannonRaw3 = new(chunks);
-
-            //ParseJpeg(cannonRaw3.MovieBox.JpegTrack, fileMemory);
-            MetaParser.ParseMeta(cannonRaw3.MovieBox.MetaTrack, fileMemory);
-            ParseCrxHdImage(cannonRaw3.MovieBox.CrxHdImageTrack, fileMemory);
-
-            //byte[] nameMemory = metaMemory.ToArray();
-            //var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
         }
+        
+    }
 
-        static void ParseJpeg(TrackBox jpegTrack, Memory<byte> fileMemory)
-        {
-            var ctmd = jpegTrack.SampleTable;
-            using FileStream fileStream = new(@"C:\Users\lehac\Desktop\IMG_5358_fullSize.jpeg", FileMode.Create, FileAccess.Write);
-            fileStream.Write(fileMemory.Slice(checked((int)ctmd.Offset.Offset), ctmd.Size.EntrySizes[0]).Span);
-        }
+    
 
-        static void ParseCrxHdImage(TrackBox crxHdImageTrack, Memory<byte> fileMemory)
+    internal class History
+    {
+        public static void ParseCrxHdImage(TrackBox crxHdImageTrack, Memory<byte> fileMemory)
         {
             var ctmd = crxHdImageTrack.SampleTable;
 
@@ -80,7 +77,6 @@ namespace Devdeb.Images.CanonRaw.Tests
                 hdr.TileWidth >>= 1;
                 hdr.TileHeight >>= 1;
             }
-            var imgdata_color_maximum = (1 << hdr.BitsPerSample) - 1;
 
             ReadOnlyMemory<byte> tileHeaderMemory = memory;
             var tileHeader = new TileHeader(ref tileHeaderMemory);
@@ -112,8 +108,7 @@ namespace Devdeb.Images.CanonRaw.Tests
             var subbandWidth = red[0].Length;
             var subbandHeight = red.Count;
 
-
-            var max_val = (1 << 14) - 1;
+            var maxColorValue = (1 << hdr.BitsPerSample) - 1;
 
             byte[] imageBuffer = new byte[subbandHeight * 2 * subbandWidth * 2 * 3];
             var parallelOptions = new ParallelOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount };
@@ -130,13 +125,13 @@ namespace Devdeb.Images.CanonRaw.Tests
                     // brightness borders: 47, 150 (in 8 bits colors)
                     //default color
 
-                    var blackPoint =max_val * 30 / 256;
-                    var whitePoint = max_val * 65 / 256;
+                    var blackPoint = maxColorValue * 5 / 256;
+                    var whitePoint = maxColorValue * 40 / 256;
                     var colorDepth = whitePoint - blackPoint;
 
                     uint red14Bit = red[height][width] - (uint)(blackPoint);
-                    uint green114Bit = green1[height][width] - (uint)(blackPoint + colorDepth / 24);
-                    uint green214Bit = green2[height][width] - (uint)(blackPoint + colorDepth / 24);
+                    uint green114Bit = green1[height][width] - (uint)(blackPoint);
+                    uint green214Bit = green2[height][width] - (uint)(blackPoint);
                     uint blue14Bit = blue[height][width] - (uint)(blackPoint);
 
                     red14Bit = Math.Max(0, red14Bit);
@@ -149,6 +144,11 @@ namespace Devdeb.Images.CanonRaw.Tests
                     green214Bit = Math.Min((uint)colorDepth, green214Bit);
                     blue14Bit = Math.Min((uint)colorDepth, blue14Bit);
 
+                    //var redValue = (double)red14Bit * 255 / colorDepth;
+                    //var green1Value =  (double)green114Bit * 255 / colorDepth;
+                    //var green2Value =  (double)green214Bit * 255 / colorDepth;
+                    //var blueValue = (double)blue14Bit * 255 / colorDepth;
+
                     var redValue = ((double)red14Bit / colorDepth) * 255;
                     var green1Value = ((double)green114Bit / colorDepth) * 255;
                     var green2Value = ((double)green214Bit / colorDepth) * 255;
@@ -159,34 +159,6 @@ namespace Devdeb.Images.CanonRaw.Tests
                     //var green1Color = (double)green114Bit / colorDepth;
                     //var green2Color = (double)green214Bit / colorDepth;
                     //var blueColor = (double)blue14Bit / colorDepth;
-
-                    //var redColorValue = redColor * 3.2406d + green1Color * -1.5372d + blueColor * -0.4986d;
-                    //if (redColorValue <= 0.0031308d)
-                    //    redColorValue *= 12.92d;
-                    //else
-                    //    redColorValue = 1.055d * Math.Pow(redColorValue, 1 / 2.4) - 0.055;
-                    //redValue = redColorValue * 255;
-
-                    //var green1ColorValue = redColor * -0.9689d + green1Color * 1.8758d + blueColor * 0.0415d;
-                    //if (green1ColorValue <= 0.0031308d)
-                    //    green1ColorValue *= 12.92d;
-                    //else
-                    //    green1ColorValue = 1.055d * Math.Pow(green1ColorValue, 1 / 2.4) - 0.055;
-                    //green1Value = green1ColorValue * 255;
-
-                    //var green2ColorValue = redColor * -0.9689d + green2Color * 1.8758d + blueColor * 0.0415d;
-                    //if (green2ColorValue <= 0.0031308d)
-                    //    green2ColorValue *= 12.92d;
-                    //else
-                    //    green2ColorValue = 1.055d * Math.Pow(green2ColorValue, 1 / 2.4) - 0.055;
-                    //green2Value = green2ColorValue * 255;
-
-                    //var blueColorValue = redColor * 0.0557d + green2Color * -0.2040d + blueColor * 1.0570d;
-                    //if (blueColorValue <= 0.0031308d)
-                    //    blueColorValue *= 12.92d;
-                    //else
-                    //    blueColorValue = 1.055d * Math.Pow(blueColorValue, 1 / 2.4) - 0.055;
-                    //blueValue = blueColorValue * 255;
 
                     //redValue = Math.Min(255, redValue);
                     //green1Value = Math.Min(255, green1Value);
@@ -236,20 +208,20 @@ namespace Devdeb.Images.CanonRaw.Tests
 
             //DrawImageBoundaries(bitmap, crxHdImageTrack);
 
-            (int[] redF, int[] greenF, int[] blueF, int[] brightness) = GetColorsFrequencies(imageBuffer);
+            //(int[] redF, int[] greenF, int[] blueF, int[] brightness) = GetColorsFrequencies(imageBuffer);
 
-            var minRed = redF.Min(x => x != 0);
-            var minGreen = greenF.Min(x => x != 0);
-            var minBlue = blueF.Min(x => x != 0);
+            //var minRed = redF.Min(x => x != 0);
+            //var minGreen = greenF.Min(x => x != 0);
+            //var minBlue = blueF.Min(x => x != 0);
 
-            ColorHistogramDrawing.DrawColorChannels(redF, greenF, blueF, brightness);
-            ColorHistogramDrawing.DrawColorChannels(bitmap, redF, greenF, blueF, brightness);
+            //ColorHistogramDrawing.DrawColorChannels(redF, greenF, blueF, brightness);
+            //ColorHistogramDrawing.DrawColorChannels(bitmap, redF, greenF, blueF, brightness);
             bitmap.Save($@"C:\Users\lehac\Desktop\bier.png", ImageFormat.Png);
 
-            byte[] nameMemory = tileMemory.ToArray();
-            var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
+            //byte[] nameMemory = tileMemory.ToArray();
+            //var str = StringSerializer.Default.Deserialize(nameMemory, 0, nameMemory.Length);
         }
-
+        private static int GetByteIndex(int width, int height, int lineLength) => (height * lineLength + width) * 3;
         private static (int[] red, int[] green, int[] blue, int[] brightness) GetColorsFrequencies(byte[] imageData)
         {
             int[] red = new int[256];
@@ -269,12 +241,6 @@ namespace Devdeb.Images.CanonRaw.Tests
             }
             return (red, green, blue, brightness);
         }
-
-        private static int GetByteIndex(int width, int height, int lineLength)
-        {
-            return (height * lineLength + width) * 3;
-        }
-
         private static void DrawImageBoundaries(Bitmap bitmap, TrackBox crxHdImageTrack)
         {
             var leftOpticalBlackOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.LeftOpticalBlackOffset;
@@ -295,7 +261,7 @@ namespace Devdeb.Images.CanonRaw.Tests
             var activeAreaOffset = crxHdImageTrack.SampleTable.Craw.CanonDimensions.BigImage.ActiveAreaOffset;
             Vector2 activeAreaOffsetPoint1 = new(activeAreaOffset.Left, activeAreaOffset.Top);
             Vector2 activeAreaOffsetPoint2 = new(activeAreaOffset.Right, activeAreaOffset.Bottom);
-            bitmap.DrawRectangle(activeAreaOffsetPoint1, activeAreaOffsetPoint2, Color.OrangeRed);
+            bitmap.DrawRectangle(activeAreaOffsetPoint1, activeAreaOffsetPoint2, Color.AliceBlue);
         }
     }
 }
